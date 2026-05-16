@@ -1,0 +1,8 @@
+.env
+node_modules/
+npm-debug.log*
+
+client_secret*.json
+credentials.json
+service-account.json
+google-service-account.json

@@ -1,0 +1,4136 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIDOTi - Sistem Informasi Dokumen Terintegrasi</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .bg-navy { background-color: #001f3f; }
+        .text-navy { color: #001f3f; }
+        .speedometer {
+            position: relative;
+            width: min(220px, 100%);
+            aspect-ratio: 2 / 1;
+            margin-inline: auto;
+            margin-bottom: 8px;
+            overflow: visible;
+        }
+        .speedometer-arc {
+            position: absolute;
+            inset: 0;
+            border-radius: 999px 999px 0 0;
+            background:
+                conic-gradient(
+                    from 270deg at 50% 100%,
+                    #dc2626 0deg 18deg,
+                    #ef4444 18deg 36deg,
+                    #fb923c 36deg 58deg,
+                    #fde047 58deg 82deg,
+                    #fbbf24 82deg 104deg,
+                    #a3e635 104deg 126deg,
+                    #65a30d 126deg 152deg,
+                    #3f7f2a 152deg 180deg,
+                    transparent 180deg 360deg
+                );
+        }
+        .speedometer-arc::after {
+            content: "";
+            position: absolute;
+            right: 13%;
+            bottom: -1px;
+            left: 13%;
+            height: 76%;
+            border-radius: 999px 999px 0 0;
+            background: #fff;
+        }
+        .speedometer-needle {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            z-index: 2;
+            width: 4px;
+            height: 84%;
+            border-radius: 999px;
+            background: #111827;
+            box-shadow: 0 1px 2px rgba(17, 24, 39, 0.35);
+            transform: translateX(-50%) rotate(-90deg);
+            transform-origin: 50% 100%;
+            transition: transform 700ms ease;
+        }
+        .speedometer-hub {
+            position: absolute;
+            bottom: -14px;
+            left: 50%;
+            z-index: 3;
+            width: 40px;
+            height: 40px;
+            border: 6px solid #050505;
+            border-radius: 999px;
+            background: radial-gradient(circle at 35% 35%, #2f2f2f 0, #050505 62%);
+            transform: translateX(-50%);
+            box-shadow: 0 2px 8px rgba(17, 24, 39, 0.28);
+        }
+        .program-chart {
+            min-width: 620px;
+        }
+        .program-row {
+            display: grid;
+            grid-template-columns: minmax(190px, 38%) minmax(280px, 1fr);
+            gap: 0;
+            align-items: center;
+            min-height: 58px;
+        }
+        .program-label {
+            padding-right: 14px;
+            color: #374151;
+            font-size: 11px;
+            font-weight: 600;
+            line-height: 1.25;
+            text-align: right;
+            text-transform: uppercase;
+        }
+        .program-bars {
+            border-left: 1px solid #cbd5e1;
+            padding-left: 0;
+        }
+        .program-track {
+            position: relative;
+            height: 17px;
+            margin-block: 4px;
+        }
+        .program-bar {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            height: 100%;
+            min-width: 0;
+            border-radius: 0 2px 2px 0;
+            padding-right: 8px;
+            color: #fff;
+            font-size: 10px;
+            font-weight: 800;
+            box-shadow: 0 2px 7px rgba(15, 23, 42, 0.22);
+            transition: width 700ms ease;
+        }
+        .program-bar-finance {
+            background: #006d6f;
+        }
+        .program-bar-physical {
+            background: #51963b;
+        }
+        .program-bar.is-small .program-value {
+            position: absolute;
+            left: calc(100% + 6px);
+            color: #0f766e;
+            white-space: nowrap;
+        }
+        .chart-empty {
+            display: flex;
+            min-height: 230px;
+            align-items: center;
+            justify-content: center;
+            border: 1px dashed #cbd5e1;
+            border-radius: 8px;
+            color: #64748b;
+            font-size: 13px;
+            text-align: center;
+        }
+        .indicator-card-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 16px;
+        }
+        .indicator-card-grid .chart-empty {
+            grid-column: 1 / -1;
+        }
+        .indicator-card {
+            position: relative;
+            min-height: 158px;
+            overflow: hidden;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: #fff;
+            padding: 18px;
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+        }
+        .indicator-card::before {
+            content: "";
+            position: absolute;
+            inset: 0 auto auto 0;
+            width: 100%;
+            height: 4px;
+            background: var(--indicator-accent, #2563eb);
+        }
+        .indicator-card-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+        }
+        .indicator-card-icon {
+            display: inline-flex;
+            width: 42px;
+            height: 42px;
+            flex: 0 0 auto;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            background: var(--indicator-soft, #eff6ff);
+            color: var(--indicator-accent, #2563eb);
+            font-size: 17px;
+        }
+        .indicator-card-title {
+            color: #334155;
+            font-size: 12px;
+            font-weight: 900;
+            line-height: 1.25;
+            text-transform: uppercase;
+        }
+        .indicator-card-value {
+            margin-top: 18px;
+            color: #0f172a;
+            font-size: 34px;
+            font-weight: 900;
+            line-height: 1;
+            overflow-wrap: anywhere;
+        }
+        .indicator-card-label {
+            margin-top: 4px;
+            color: #64748b;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+        .indicator-card-predicate {
+            display: inline-flex;
+            max-width: 100%;
+            margin-top: 14px;
+            border: 1px solid var(--indicator-border, #bfdbfe);
+            border-radius: 999px;
+            background: var(--indicator-soft, #eff6ff);
+            color: var(--indicator-accent, #2563eb);
+            font-size: 12px;
+            font-weight: 900;
+            line-height: 1.2;
+            padding: 7px 10px;
+            overflow-wrap: anywhere;
+        }
+        @media (max-width: 1279px) {
+            .indicator-card-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+        @media (max-width: 639px) {
+            .indicator-card-grid {
+                grid-template-columns: minmax(0, 1fr);
+            }
+        }
+        .slides-viewer {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
+            gap: 18px;
+            align-items: stretch;
+        }
+        .slides-thumb-list {
+            display: none;
+        }
+        .slide-thumb-button {
+            display: grid;
+            gap: 7px;
+            width: 100%;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background: #fff;
+            padding: 7px;
+            text-align: left;
+            transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+        }
+        .slide-thumb-button:hover,
+        .slide-thumb-button.is-active {
+            border-color: #2563eb;
+            box-shadow: 0 10px 22px rgba(37, 99, 235, 0.12);
+            transform: translateY(-1px);
+        }
+        .slide-thumb-media {
+            display: flex;
+            aspect-ratio: 16 / 9;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            border-radius: 6px;
+            background: #eff6ff;
+            color: #2563eb;
+            font-size: 18px;
+        }
+        .slide-thumb-media img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .slide-thumb-label {
+            color: #334155;
+            font-size: 11px;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+        .infographic-slides-actions,
+        .infographic-presentation .slides-controls {
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(-6px);
+            transition: opacity 170ms ease, transform 170ms ease, visibility 0s linear 170ms;
+            visibility: hidden;
+        }
+        .infographic-presentation .slides-controls {
+            transform: translateY(6px);
+        }
+        .infographic-presentation:focus-within .infographic-slides-actions,
+        .infographic-presentation:focus-within .slides-controls,
+        .infographic-presentation.is-controls-visible .infographic-slides-actions,
+        .infographic-presentation.is-controls-visible .slides-controls {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateY(0);
+            transition-delay: 0s;
+            visibility: visible;
+        }
+        .slides-main-panel {
+            display: grid;
+            gap: 12px;
+            min-width: 0;
+        }
+        .slides-frame {
+            position: relative;
+            display: flex;
+            aspect-ratio: 16 / 9;
+            min-height: 280px;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background: #f8fafc;
+        }
+        .slides-frame-wake-layer {
+            position: absolute;
+            inset: 0;
+            z-index: 2;
+            border: 0;
+            background: transparent;
+            cursor: pointer;
+        }
+        .slides-frame-wake-layer:focus-visible {
+            outline: 3px solid rgba(37, 99, 235, 0.32);
+            outline-offset: -6px;
+        }
+        .infographic-presentation.is-controls-visible .slides-frame-wake-layer {
+            pointer-events: none;
+        }
+        .slides-frame img,
+        .slides-frame iframe {
+            width: 100%;
+            height: 100%;
+            border: 0;
+        }
+        .slides-frame img {
+            object-fit: contain;
+            background: #fff;
+        }
+        .slides-frame-message {
+            display: grid;
+            gap: 9px;
+            max-width: 430px;
+            padding: 28px;
+            color: #475569;
+            font-size: 13px;
+            font-weight: 700;
+            line-height: 1.55;
+            text-align: center;
+        }
+        .slides-frame-message i {
+            color: #2563eb;
+            font-size: 28px;
+        }
+        .slides-controls {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+        .slides-nav-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-height: 38px;
+            border: 1px solid #bfdbfe;
+            border-radius: 8px;
+            background: #eff6ff;
+            color: #1d4ed8;
+            font-size: 13px;
+            font-weight: 900;
+            padding: 9px 13px;
+            transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+        }
+        .slides-nav-button:hover:not(:disabled) {
+            border-color: #2563eb;
+            background: #2563eb;
+            color: #fff;
+        }
+        .slides-nav-button:disabled {
+            cursor: not-allowed;
+            opacity: 0.48;
+        }
+        .slides-counter {
+            color: #475569;
+            font-size: 12px;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+        @media (max-width: 1023px) {
+            .slides-viewer {
+                grid-template-columns: minmax(0, 1fr);
+            }
+            .slides-thumb-list {
+                grid-auto-flow: column;
+                grid-auto-columns: minmax(132px, 168px);
+                max-height: none;
+                overflow-x: auto;
+                overflow-y: hidden;
+                padding: 0 0 4px;
+            }
+        }
+        @media (max-width: 639px) {
+            .slides-frame {
+                min-height: 190px;
+            }
+            .slides-controls {
+                display: grid;
+                grid-template-columns: 1fr;
+            }
+            .slides-counter {
+                order: -1;
+                text-align: center;
+            }
+            .slides-nav-button {
+                width: 100%;
+            }
+        }
+        .news-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 18px;
+        }
+        .news-grid .news-state {
+            grid-column: 1 / -1;
+        }
+        .news-state {
+            display: flex;
+            min-height: 170px;
+            align-items: center;
+            justify-content: center;
+            border: 1px dashed #cbd5e1;
+            border-radius: 8px;
+            background: #fff;
+            color: #64748b;
+            font-size: 13px;
+            font-weight: 700;
+            text-align: center;
+        }
+        .news-card {
+            overflow: hidden;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: #fff;
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.07);
+            transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+        }
+        .news-card:hover {
+            border-color: #bfdbfe;
+            box-shadow: 0 16px 32px rgba(15, 23, 42, 0.11);
+            transform: translateY(-2px);
+        }
+        .news-card-media {
+            position: relative;
+            aspect-ratio: 16 / 9;
+            overflow: hidden;
+            background: #eff6ff;
+        }
+        .news-card-media img {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .news-card-fallback {
+            display: flex;
+            height: 100%;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            color: #2563eb;
+            font-size: 12px;
+            font-weight: 800;
+            text-align: center;
+        }
+        .news-card-body {
+            display: flex;
+            min-height: 260px;
+            flex-direction: column;
+            padding: 18px;
+        }
+        .news-card-meta {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .news-card-date {
+            color: #64748b;
+            font-size: 12px;
+            font-weight: 800;
+        }
+        .news-card-category {
+            border-radius: 999px;
+            background: #ecfdf5;
+            color: #0f766e;
+            font-size: 11px;
+            font-weight: 900;
+            padding: 5px 9px;
+            text-transform: uppercase;
+        }
+        .news-card-title {
+            color: #0f172a;
+            font-size: 16px;
+            font-weight: 900;
+            line-height: 1.35;
+        }
+        .news-card-excerpt {
+            display: -webkit-box;
+            margin-top: 10px;
+            overflow: hidden;
+            color: #475569;
+            font-size: 13px;
+            line-height: 1.55;
+            white-space: pre-line;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 4;
+        }
+        .news-card.is-expanded .news-card-excerpt {
+            display: block;
+            overflow: visible;
+            -webkit-line-clamp: unset;
+        }
+        .news-card-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: auto;
+            padding-top: 16px;
+        }
+        .news-card-action {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            border-radius: 8px;
+            border: 1px solid #bfdbfe;
+            background: #eff6ff;
+            color: #1d4ed8;
+            font-size: 12px;
+            font-weight: 900;
+            padding: 9px 11px;
+            transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
+        }
+        .news-card-action:hover {
+            border-color: #2563eb;
+            background: #2563eb;
+            color: #fff;
+        }
+        .news-card-action-download {
+            border-color: #bbf7d0;
+            background: #f0fdf4;
+            color: #15803d;
+        }
+        .news-card-action-download:hover {
+            border-color: #15803d;
+            background: #15803d;
+            color: #fff;
+        }
+        @media (max-width: 1279px) {
+            .news-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+        @media (max-width: 639px) {
+            .news-grid {
+                grid-template-columns: minmax(0, 1fr);
+            }
+            .news-card-body {
+                min-height: 0;
+            }
+        }
+        .outcome-chart {
+            min-width: 840px;
+            display: grid;
+            gap: 14px;
+        }
+        .outcome-toggle-button {
+            display: inline-flex;
+            min-height: 30px;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            border: 1px solid #bfdbfe;
+            border-radius: 8px;
+            background: #eff6ff;
+            color: #1d4ed8;
+            font-size: 11px;
+            font-weight: 900;
+            padding: 7px 10px;
+            transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+        }
+        .outcome-toggle-button:hover:not(:disabled) {
+            border-color: #2563eb;
+            background: #2563eb;
+            color: #fff;
+        }
+        .outcome-toggle-button:disabled {
+            cursor: not-allowed;
+            opacity: 0.48;
+        }
+        .outcome-summary {
+            display: grid;
+            gap: 12px;
+            border: 1px solid #dbeafe;
+            border-radius: 8px;
+            background: #f8fafc;
+            padding: 14px;
+        }
+        .outcome-summary-head {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        .outcome-summary-title {
+            color: #0f172a;
+            font-size: 13px;
+            font-weight: 900;
+            line-height: 1.3;
+        }
+        .outcome-summary-count {
+            border-radius: 999px;
+            background: #dbeafe;
+            color: #1d4ed8;
+            font-size: 11px;
+            font-weight: 900;
+            padding: 5px 9px;
+            white-space: nowrap;
+        }
+        .outcome-details {
+            display: grid;
+            gap: 14px;
+        }
+        .outcome-details[hidden] {
+            display: none;
+        }
+        .outcome-row {
+            display: grid;
+            grid-template-columns: minmax(290px, 36%) minmax(380px, 1fr);
+            gap: 18px;
+            align-items: stretch;
+            border-top: 1px solid #e5e7eb;
+            padding-top: 14px;
+        }
+        .outcome-row:first-child {
+            border-top: 0;
+            padding-top: 0;
+        }
+        .outcome-meta {
+            display: grid;
+            gap: 8px;
+            align-content: start;
+        }
+        .outcome-kicker {
+            color: #2563eb;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0;
+            text-transform: uppercase;
+        }
+        .outcome-title {
+            color: #111827;
+            font-size: 13px;
+            font-weight: 800;
+            line-height: 1.35;
+        }
+        .outcome-detail {
+            color: #475569;
+            font-size: 11px;
+            line-height: 1.35;
+        }
+        .outcome-detail strong {
+            color: #1f2937;
+            font-weight: 800;
+        }
+        .outcome-money {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            padding-top: 2px;
+        }
+        .outcome-money span {
+            border-radius: 6px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            color: #334155;
+            font-size: 10px;
+            font-weight: 800;
+            padding: 5px 7px;
+            white-space: nowrap;
+        }
+        .outcome-bars {
+            display: grid;
+            gap: 8px;
+            align-content: center;
+        }
+        .outcome-bar-line {
+            display: grid;
+            grid-template-columns: 64px minmax(220px, 1fr) 70px;
+            gap: 8px;
+            align-items: center;
+        }
+        .outcome-bar-label {
+            color: #334155;
+            font-size: 10px;
+            font-weight: 800;
+            text-align: right;
+            text-transform: uppercase;
+        }
+        .outcome-track {
+            position: relative;
+            height: 18px;
+            overflow: hidden;
+            border-radius: 3px;
+            background: #e5e7eb;
+        }
+        .outcome-bar {
+            height: 100%;
+            min-width: 2px;
+            border-radius: 3px;
+            transition: width 700ms ease;
+        }
+        .outcome-bar-target {
+            background: #2563eb;
+        }
+        .outcome-bar-achievement {
+            background: #0f766e;
+        }
+        .outcome-value {
+            color: #111827;
+            font-size: 11px;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+        .sheet-edit-table {
+            min-width: 760px;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        .sheet-edit-table th,
+        .sheet-edit-table td {
+            border-bottom: 1px solid #e5e7eb;
+            border-right: 1px solid #e5e7eb;
+        }
+        .sheet-edit-table th:first-child,
+        .sheet-edit-table td:first-child {
+            border-left: 1px solid #e5e7eb;
+        }
+        .sheet-edit-table th {
+            background: #f8fafc;
+            color: #334155;
+            font-size: 11px;
+            font-weight: 800;
+            padding: 9px 10px;
+            text-align: left;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+        .sheet-edit-table td {
+            background: #fff;
+            padding: 7px;
+            vertical-align: top;
+        }
+        .sheet-edit-table input {
+            width: 100%;
+            min-width: 120px;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            color: #111827;
+            font-size: 12px;
+            outline: none;
+            padding: 8px 9px;
+            transition: border-color 150ms ease, box-shadow 150ms ease;
+        }
+        .sheet-edit-table input:focus {
+            border-color: #0f766e;
+            box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
+        }
+        .recent-doc-action {
+            border: 0;
+            background: transparent;
+            color: inherit;
+            cursor: pointer;
+            padding: 0;
+            transition: color 150ms ease, transform 150ms ease;
+        }
+        .recent-doc-action:hover {
+            color: #001f3f;
+            transform: translateY(-1px);
+        }
+        .recent-doc-action:focus-visible {
+            border-radius: 4px;
+            outline: 2px solid #2563eb;
+            outline-offset: 3px;
+        }
+        .recent-documents-scroll {
+            max-height: 430px;
+            overflow-y: auto;
+        }
+        .recent-documents-scroll thead {
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+        .recent-documents-scroll tbody tr:first-child td {
+            border-top: 0;
+        }
+        .dashboard-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 28px;
+        }
+        .dashboard-header-main {
+            flex: 1 1 520px;
+            width: min(100%, 720px);
+            min-width: 0;
+        }
+        .dashboard-header-logos {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            margin-bottom: 18px;
+        }
+        .dashboard-header-actions {
+            display: grid;
+            justify-items: end;
+            gap: 16px;
+            flex: 0 0 min(38%, 390px);
+        }
+        .dashboard-action-row {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 16px;
+        }
+        .dashboard-logo-sidot {
+            width: min(100%, 310px);
+            height: 112px;
+            object-fit: contain;
+            object-position: left center;
+        }
+        .dashboard-logo-berakhlak {
+            width: min(100%, 360px);
+            height: 92px;
+            object-fit: contain;
+            object-position: right center;
+        }
+        @media (max-width: 1023px) {
+            .dashboard-header {
+                flex-direction: column;
+            }
+            .dashboard-header-main,
+            .dashboard-header-actions {
+                width: 100%;
+                flex-basis: auto;
+            }
+            .dashboard-header-actions,
+            .dashboard-action-row {
+                justify-items: start;
+                justify-content: flex-start;
+            }
+        }
+        @media (max-width: 639px) {
+            .dashboard-header-logos {
+                gap: 12px;
+            }
+            .dashboard-action-row {
+                width: 100%;
+                justify-content: space-between;
+            }
+            .dashboard-logo-sidot {
+                height: 88px;
+            }
+            .dashboard-logo-berakhlak {
+                height: 68px;
+            }
+        }
+        .sidebar-brand {
+            min-height: 168px;
+            padding: 16px 16px 14px;
+        }
+        .sidebar-logo {
+            width: 86px;
+            height: 86px;
+            object-fit: contain;
+            border-radius: 999px;
+            background: #fff;
+            padding: 7px;
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+        }
+    </style>
+    <link rel="stylesheet" href="./style.css?v=20260516-assetfix">
+</head>
+<body class="auth-pending bg-gray-100 font-sans antialiased">
+
+    <section id="loginScreen" class="auth-screen" aria-live="polite">
+        <div class="auth-card">
+            <div class="auth-brand">
+                <img src="./assets/images/logo.png?v=20260516-assetfix" alt="Logo Kabupaten Buton Utara" class="auth-logo">
+                <div>
+                    <p class="auth-kicker">SIDOT</p>
+                    <h1>Masuk Dashboard</h1>
+                    <p class="auth-subtitle">Gunakan akun yang terdaftar pada Google Sheets user.</p>
+                </div>
+            </div>
+            <form id="loginForm" class="auth-form">
+                <label for="loginUsername">
+                    <span>Username atau Email</span>
+                    <input id="loginUsername" name="username" type="text" autocomplete="username" required placeholder="contoh: superadmin">
+                </label>
+                <label for="loginPassword">
+                    <span>Password</span>
+                    <input id="loginPassword" name="password" type="password" autocomplete="current-password" required placeholder="Masukkan password">
+                </label>
+                <div id="loginMessage" class="auth-message" role="alert"></div>
+                <button id="loginSubmit" type="submit" class="auth-submit">
+                    <i class="fas fa-right-to-bracket" aria-hidden="true"></i>
+                    <span>Masuk</span>
+                </button>
+                <button id="guestLoginButton" type="button" class="auth-submit auth-submit-secondary" data-guest-login formnovalidate>
+                    <i class="fas fa-user" aria-hidden="true"></i>
+                    <span>Masuk sebagai Tamu</span>
+                </button>
+            </form>
+        </div>
+    </section>
+
+    <!-- Sidebar Navigation -->
+    <aside id="appSidebar" class="fixed inset-y-0 left-0 w-64 overflow-y-auto bg-navy text-white transition-transform duration-300 transform">
+        <div class="sidebar-brand flex flex-col items-center justify-center text-center border-b border-blue-900">
+            <img src="./assets/images/logo.png?v=20260516-assetfix" alt="Logo Kabupaten Buton Utara" class="sidebar-logo mb-3">
+            <h1 class="text-2xl font-bold tracking-widest leading-none">SIDOT</h1>
+            <p class="mt-2 text-[10px] font-semibold leading-snug text-blue-100 uppercase">
+                DINAS PEMBERDAYAAN MASYARAKAT DAN DESA KABUPATEN BUTON UTARA
+            </p>
+        </div>
+        <div id="authUserPanel" class="hidden border-b border-blue-900 px-5 py-4">
+            <p id="authUserName" class="text-sm font-bold text-white"></p>
+            <p id="authUserMeta" class="mt-1 text-[11px] font-semibold uppercase text-blue-200"></p>
+        </div>
+        <nav class="mt-6">
+            <a href="#" class="flex items-center px-6 py-3 bg-blue-800 border-l-4 border-blue-400">
+                <i class="fas fa-home mr-3"></i> Dashboard
+            </a>
+            <div class="px-6 py-4 text-xs font-semibold text-gray-400 uppercase">Kategori Data</div>
+            <div>
+                <button id="perencanaanButton" type="button" class="flex items-center justify-between w-full px-6 py-3 hover:bg-blue-800 transition" aria-expanded="false" aria-controls="perencanaanDropdown">
+                    <span class="flex items-center">
+                        <i class="fas fa-file-invoice mr-4"></i> Perencanaan
+                    </span>
+                    <i id="perencanaanIcon" class="fas fa-chevron-down text-xs transition"></i>
+                </button>
+                <div id="perencanaanDropdown" class="hidden bg-blue-950/60"></div>
+            </div>
+            <div>
+                <button id="penganggaranButton" type="button" class="flex items-center justify-between w-full px-6 py-3 hover:bg-blue-800 transition" aria-expanded="false" aria-controls="penganggaranDropdown">
+                    <span class="flex items-center">
+                        <i class="fas fa-wallet mr-4"></i> Penganggaran
+                    </span>
+                    <i id="penganggaranIcon" class="fas fa-chevron-down text-xs transition"></i>
+                </button>
+                <div id="penganggaranDropdown" class="hidden bg-blue-950/60"></div>
+            </div>
+            <div>
+                <button id="dataDukungButton" type="button" class="flex items-center justify-between w-full px-6 py-3 hover:bg-blue-800 transition" aria-expanded="false" aria-controls="dataDukungDropdown">
+                    <span class="flex items-center">
+                        <i class="fas fa-database mr-4"></i> Data Dukung
+                    </span>
+                    <i id="dataDukungIcon" class="fas fa-chevron-down text-xs transition"></i>
+                </button>
+                <div id="dataDukungDropdown" class="hidden bg-blue-950/60"></div>
+            </div>
+            <div>
+                <button id="monevButton" type="button" class="flex items-center justify-between w-full px-6 py-3 hover:bg-blue-800 transition" aria-expanded="false" aria-controls="monevDropdown">
+                    <span class="flex items-center">
+                        <i class="fas fa-chart-line mr-4"></i> Monev
+                    </span>
+                    <i id="monevIcon" class="fas fa-chevron-down text-xs transition"></i>
+                </button>
+                <div id="monevDropdown" class="hidden bg-blue-950/60"></div>
+            </div>
+            <div>
+                <button id="arsipButton" type="button" class="flex items-center justify-between w-full px-6 py-3 hover:bg-blue-800 transition" aria-expanded="false" aria-controls="arsipDropdown">
+                    <span class="flex items-center">
+                        <i class="fas fa-archive mr-4"></i> Arsip
+                    </span>
+                    <i id="arsipIcon" class="fas fa-chevron-down text-xs transition"></i>
+                </button>
+                <div id="arsipDropdown" class="hidden bg-blue-950/60"></div>
+            </div>
+            <div data-role-control="manage-users">
+                <button id="manageUsersButton" type="button" class="flex w-full items-center px-6 py-3 hover:bg-blue-800 transition">
+                    <i class="fas fa-users-gear mr-4"></i> Kelola User
+                </button>
+            </div>
+            <div class="mt-10 border-t border-blue-900 pt-4">
+                <button id="logoutButton" type="button" class="flex w-full items-center px-6 py-3 text-left hover:bg-red-600 transition">
+                    <i class="fas fa-sign-out-alt mr-4"></i> Keluar
+                </button>
+            </div>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main id="appMain" class="ml-64 p-8">
+        <!-- Topbar -->
+        <header class="dashboard-header mb-8 bg-white p-4 rounded-xl shadow-sm">
+            <div class="dashboard-header-main">
+                <div class="dashboard-header-logos">
+                    <img src="./assets/images/sidot.png?v=20260516-assetfix" alt="SIDOTi - Sistem Informasi Dokumen Terintegrasi" class="dashboard-logo-sidot">
+                </div>
+                <div id="documentSearchRoot" class="relative">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3">
+                        <i class="fas fa-search text-gray-400"></i>
+                    </span>
+                    <input id="documentSearchInput" type="search" class="w-full py-2 pl-10 pr-4 bg-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Cari dokumen, nomor SK, atau tahun..." autocomplete="off" aria-label="Cari dokumen Google Drive" aria-controls="documentSearchResults" aria-expanded="false">
+                    <div id="documentSearchResults" class="document-search-results hidden" role="region" aria-live="polite"></div>
+                </div>
+            </div>
+            <div class="dashboard-header-actions">
+                <div class="dashboard-action-row">
+                    <button id="uploadButton" type="button" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition" data-role-control="upload">
+                        <i class="fas fa-upload mr-2"></i> Upload Baru
+                    </button>
+                    <img src="https://ui-avatars.com/api/?name=Admin+User&background=001f3f&color=fff" class="w-10 h-10 rounded-full border">
+                </div>
+                <img src="./assets/images/berakhlak.png?v=20260516-assetfix" alt="BerAKHLAK Bangga Melayani Bangsa" class="dashboard-logo-berakhlak">
+            </div>
+        </header>
+
+        <!-- Dashboard Visualisasi -->
+        <section class="mb-8 grid grid-cols-1 gap-6 2xl:grid-cols-[340px_minmax(420px,1fr)_minmax(560px,1.35fr)]">
+            <div class="rounded-xl bg-white p-6 shadow-sm">
+                <div class="mb-5 flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                        <p class="text-xs font-semibold uppercase text-blue-600">Capaian</p>
+                        <h2 class="text-lg font-bold text-navy">Realisasi Keuangan dan Fisik</h2>
+                    </div>
+                    <div class="flex flex-wrap items-center justify-end gap-2">
+                        <span id="capaianStatus" class="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">Memuat</span>
+                        <button id="editCapaianButton" type="button" class="inline-flex items-center gap-1 rounded-full border border-green-200 bg-white px-2.5 py-1 text-[11px] font-bold text-green-700 transition hover:bg-green-50" title="Ubah data capaian" data-role-control="edit">
+                            <i class="fas fa-pen text-[10px]"></i>
+                            <span>Ubah Data</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 gap-7 sm:grid-cols-2">
+                    <div class="flex flex-col items-center">
+                        <div id="physicalGauge" class="speedometer" aria-label="Realisasi Fisik">
+                            <div class="speedometer-arc"></div>
+                            <div class="speedometer-needle"></div>
+                            <div class="speedometer-hub"></div>
+                        </div>
+                        <div id="physicalGaugeValue" class="mt-3 text-4xl font-black leading-none text-gray-950">0%</div>
+                        <div class="mt-2 text-center text-sm font-black uppercase text-gray-950">Realisasi Fisik</div>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <div id="financialGauge" class="speedometer" aria-label="Realisasi Keuangan">
+                            <div class="speedometer-arc"></div>
+                            <div class="speedometer-needle"></div>
+                            <div class="speedometer-hub"></div>
+                        </div>
+                        <div id="financialGaugeValue" class="mt-3 text-4xl font-black leading-none text-gray-950">0%</div>
+                        <div class="mt-2 text-center text-sm font-black uppercase text-gray-950">Realisasi Keuangan</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rounded-xl bg-white p-6 shadow-sm">
+                <div class="mb-5 flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                        <p class="text-xs font-semibold uppercase text-blue-600">Program</p>
+                        <h2 class="text-lg font-bold text-navy">Realisasi Program</h2>
+                    </div>
+                    <div class="flex flex-wrap items-center justify-end gap-2">
+                        <span id="programStatus" class="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">Memuat</span>
+                        <button id="editProgramButton" type="button" class="inline-flex items-center gap-1 rounded-full border border-green-200 bg-white px-2.5 py-1 text-[11px] font-bold text-green-700 transition hover:bg-green-50" title="Ubah data program" data-role-control="edit">
+                            <i class="fas fa-pen text-[10px]"></i>
+                            <span>Ubah Data</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="mb-3 flex flex-wrap gap-3 text-xs font-semibold text-gray-600">
+                    <span class="inline-flex items-center gap-2"><span class="h-2.5 w-5 rounded-sm bg-[#006d6f]"></span>Keuangan</span>
+                    <span class="inline-flex items-center gap-2"><span class="h-2.5 w-5 rounded-sm bg-[#51963b]"></span>Fisik</span>
+                </div>
+                <div id="programChart" class="overflow-x-auto"></div>
+            </div>
+
+            <div class="rounded-xl bg-white p-6 shadow-sm">
+                <div class="mb-5 flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                        <p class="text-xs font-semibold uppercase text-blue-600">Bulanan</p>
+                        <h2 class="text-lg font-bold text-navy">Grafik Realisasi Bulanan</h2>
+                    </div>
+                    <div class="flex flex-wrap items-center justify-end gap-2">
+                        <span id="monthlyStatus" class="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">Memuat</span>
+                        <button id="editMonthlyButton" type="button" class="inline-flex items-center gap-1 rounded-full border border-green-200 bg-white px-2.5 py-1 text-[11px] font-bold text-green-700 transition hover:bg-green-50" title="Ubah data bulanan" data-role-control="edit">
+                            <i class="fas fa-pen text-[10px]"></i>
+                            <span>Ubah Data</span>
+                        </button>
+                    </div>
+                </div>
+                <div id="monthlyChart" class="overflow-x-auto"></div>
+            </div>
+        </section>
+
+        <section class="mb-8 grid grid-cols-1 gap-6">
+            <div class="rounded-xl bg-white p-6 shadow-sm">
+                <div class="mb-5 flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                        <p class="text-xs font-semibold uppercase text-blue-600">Immediate Output</p>
+                        <h2 class="text-lg font-bold text-navy">Capaian Target dan Realisasi Kegiatan</h2>
+                    </div>
+                    <div class="flex flex-wrap items-center justify-end gap-2">
+                        <span id="immediateOutputStatus" class="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">Memuat</span>
+                        <button id="editImmediateOutputButton" type="button" class="inline-flex items-center gap-1 rounded-full border border-green-200 bg-white px-2.5 py-1 text-[11px] font-bold text-green-700 transition hover:bg-green-50" title="Ubah data immediate output" data-role-control="edit">
+                            <i class="fas fa-pen text-[10px]"></i>
+                            <span>Ubah Data</span>
+                        </button>
+                        <button id="immediateOutputToggleButton" type="button" class="outcome-toggle-button" aria-expanded="false" disabled>
+                            <i class="fas fa-list-ul text-[10px]"></i>
+                            <span>Tampilkan Detail Bar</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="mb-3 flex flex-wrap gap-3 text-xs font-semibold text-gray-600">
+                    <span class="inline-flex items-center gap-2"><span class="h-2.5 w-5 rounded-sm bg-[#2563eb]"></span>Target</span>
+                    <span class="inline-flex items-center gap-2"><span class="h-2.5 w-5 rounded-sm bg-[#0f766e]"></span>Capaian</span>
+                </div>
+                <div id="immediateOutputChart" class="overflow-x-auto"></div>
+            </div>
+
+            <div class="rounded-xl bg-white p-6 shadow-sm">
+                <div class="mb-5 flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                        <p class="text-xs font-semibold uppercase text-blue-600">Intermediate Outcome</p>
+                        <h2 class="text-lg font-bold text-navy">Capaian Target dan Realisasi Program</h2>
+                    </div>
+                    <div class="flex flex-wrap items-center justify-end gap-2">
+                        <span id="intermediateOutcomeStatus" class="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">Memuat</span>
+                        <button id="editIntermediateOutcomeButton" type="button" class="inline-flex items-center gap-1 rounded-full border border-green-200 bg-white px-2.5 py-1 text-[11px] font-bold text-green-700 transition hover:bg-green-50" title="Ubah data intermediate outcome" data-role-control="edit">
+                            <i class="fas fa-pen text-[10px]"></i>
+                            <span>Ubah Data</span>
+                        </button>
+                        <button id="intermediateOutcomeToggleButton" type="button" class="outcome-toggle-button" aria-expanded="false" disabled>
+                            <i class="fas fa-list-ul text-[10px]"></i>
+                            <span>Tampilkan Detail Bar</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="mb-3 flex flex-wrap gap-3 text-xs font-semibold text-gray-600">
+                    <span class="inline-flex items-center gap-2"><span class="h-2.5 w-5 rounded-sm bg-[#2563eb]"></span>Target</span>
+                    <span class="inline-flex items-center gap-2"><span class="h-2.5 w-5 rounded-sm bg-[#0f766e]"></span>Capaian</span>
+                </div>
+                <div id="intermediateOutcomeChart" class="overflow-x-auto"></div>
+            </div>
+
+            <div class="rounded-xl bg-white p-6 shadow-sm">
+                <div class="mb-5 flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                        <p class="text-xs font-semibold uppercase text-blue-600">Ultimate Outcome</p>
+                        <h2 class="text-lg font-bold text-navy">Capaian Target dan Realisasi Tujuan</h2>
+                    </div>
+                    <div class="flex flex-wrap items-center justify-end gap-2">
+                        <span id="ultimateOutcomeStatus" class="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">Memuat</span>
+                        <button id="editUltimateOutcomeButton" type="button" class="inline-flex items-center gap-1 rounded-full border border-green-200 bg-white px-2.5 py-1 text-[11px] font-bold text-green-700 transition hover:bg-green-50" title="Ubah data ultimate outcome" data-role-control="edit">
+                            <i class="fas fa-pen text-[10px]"></i>
+                            <span>Ubah Data</span>
+                        </button>
+                        <button id="ultimateOutcomeToggleButton" type="button" class="outcome-toggle-button" aria-expanded="false" disabled>
+                            <i class="fas fa-list-ul text-[10px]"></i>
+                            <span>Tampilkan Detail Bar</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="mb-3 flex flex-wrap gap-3 text-xs font-semibold text-gray-600">
+                    <span class="inline-flex items-center gap-2"><span class="h-2.5 w-5 rounded-sm bg-[#2563eb]"></span>Target</span>
+                    <span class="inline-flex items-center gap-2"><span class="h-2.5 w-5 rounded-sm bg-[#0f766e]"></span>Capaian</span>
+                </div>
+                <div id="ultimateOutcomeChart" class="overflow-x-auto"></div>
+            </div>
+        </section>
+
+        <section class="mb-8">
+            <div class="mb-4 flex flex-wrap items-start justify-between gap-4">
+                <div>
+                    <p class="text-xs font-semibold uppercase text-blue-600">Indikator Utama</p>
+                    <h2 class="text-lg font-bold text-navy">Nilai dan Predikat Kinerja</h2>
+                </div>
+                <span id="indicatorCardStatus" class="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">Memuat</span>
+            </div>
+            <div id="indicatorCardGrid" class="indicator-card-grid" aria-live="polite"></div>
+        </section>
+
+        <section id="infographicPresentationSection" class="infographic-presentation mb-8 rounded-xl bg-white p-6 shadow-sm" aria-labelledby="infographicPresentationTitle">
+            <div class="mb-5 flex flex-wrap items-start justify-between gap-4">
+                <div>
+                    <p class="text-xs font-semibold uppercase text-blue-600">Presentasi</p>
+                    <h2 id="infographicPresentationTitle" class="text-lg font-bold text-navy">Infografis</h2>
+                </div>
+                <div class="infographic-slides-actions flex flex-wrap items-center justify-end gap-2">
+                    <span id="infographicSlidesStatus" class="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">Siap</span>
+                    <button id="infographicSlidesLoadButton" type="button" class="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-white px-3 py-2 text-xs font-black text-blue-700 transition hover:bg-blue-50">
+                        <i class="fas fa-rotate text-[10px]"></i>
+                        <span>Muat Slide</span>
+                    </button>
+                    <a id="infographicSlidesOpenLink" href="#" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-xs font-black text-white transition hover:bg-blue-700">
+                        <i class="fas fa-arrow-up-right-from-square text-[10px]"></i>
+                        <span>Buka Slide</span>
+                    </a>
+                </div>
+            </div>
+            <div class="slides-viewer">
+                <aside id="infographicSlidesThumbnailList" class="slides-thumb-list" aria-hidden="true"></aside>
+                <div class="slides-main-panel">
+                    <div id="infographicSlidesFrame" class="slides-frame" tabindex="0" aria-live="polite"></div>
+                    <div class="slides-controls">
+                        <button id="infographicSlidesPrevButton" type="button" class="slides-nav-button">
+                            <i class="fas fa-chevron-left text-[10px]"></i>
+                            <span>Previous</span>
+                        </button>
+                        <span id="infographicSlidesCounter" class="slides-counter">Slide</span>
+                        <button id="infographicSlidesNextButton" type="button" class="slides-nav-button">
+                            <span>Next</span>
+                            <i class="fas fa-chevron-right text-[10px]"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Recent Documents Table -->
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+            <div class="p-6 border-b border-gray-100 flex justify-between items-center">
+                <h2 class="text-lg font-bold text-navy">Dokumen Terbaru</h2>
+                <a href="#documentSearchRoot" class="text-blue-600 text-sm font-semibold hover:underline cursor-pointer" data-view-all-documents aria-label="Lihat semua dokumen">Lihat Semua</a>
+            </div>
+            <div class="recent-documents-scroll">
+                <table id="recentDocumentsTable" class="w-full text-left">
+                    <thead class="bg-gray-50 text-gray-600 uppercase text-xs">
+                        <tr>
+                            <th class="px-6 py-4">Nama Dokumen</th>
+                            <th class="px-6 py-4">Kategori</th>
+                            <th class="px-6 py-4">Tahun</th>
+                            <th class="px-6 py-4">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <section id="berita" class="mt-8">
+            <div class="mb-4 flex flex-wrap items-start justify-between gap-4">
+                <div>
+                    <p class="text-xs font-semibold uppercase text-blue-600">Berita</p>
+                    <h2 class="text-lg font-bold text-navy">Berita Terbaru</h2>
+                    <p class="mt-1 text-sm font-semibold text-gray-500">Informasi dan kegiatan terbaru</p>
+                </div>
+                <span id="beritaStatus" class="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">Memuat</span>
+            </div>
+            <div id="beritaGrid" class="news-grid" aria-live="polite">
+                <div class="news-state">Memuat berita...</div>
+            </div>
+        </section>
+
+        <div id="uploadModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 px-4">
+            <div class="w-full max-w-lg overflow-hidden rounded-lg bg-white shadow-xl">
+                <div class="flex items-start justify-between border-b border-gray-100 px-6 py-4">
+                    <div>
+                        <h3 class="text-lg font-bold text-navy">Upload Dokumen Baru</h3>
+                        <p class="mt-1 text-sm text-gray-500">Pilih jenis data, kategori, sub kategori, dan dokumen yang akan diunggah.</p>
+                    </div>
+                    <button id="closeUploadModal" type="button" class="text-gray-400 hover:text-gray-700" aria-label="Tutup popup upload">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <form id="uploadForm" class="space-y-4 p-6">
+                    <div>
+                        <label for="uploadJenisData" class="mb-1 block text-sm font-semibold text-gray-700">Jenis Data</label>
+                        <select id="uploadJenisData" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100">
+                            <option value="Arsip">Arsip</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="uploadKategori" class="mb-1 block text-sm font-semibold text-gray-700">Kategori</label>
+                        <select id="uploadKategori" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"></select>
+                    </div>
+                    <div>
+                        <label for="uploadSubKategori" class="mb-1 block text-sm font-semibold text-gray-700">Sub Kategori</label>
+                        <select id="uploadSubKategori" class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"></select>
+                    </div>
+                    <div>
+                        <label for="uploadFile" class="mb-1 block text-sm font-semibold text-gray-700">Dokumen</label>
+                        <input id="uploadFile" type="file" class="w-full rounded-lg border border-dashed border-gray-300 px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-blue-600 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white hover:file:bg-blue-700">
+                    </div>
+                    <div id="uploadInfo" class="rounded-lg bg-blue-50 px-4 py-3 text-sm text-blue-800"></div>
+                    <div class="flex justify-end gap-3 pt-2">
+                        <button id="cancelUpload" type="button" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">Batal</button>
+                        <button id="submitUploadButton" type="submit" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60">
+                            <i class="fas fa-cloud-upload-alt mr-2"></i> Upload Otomatis ke Drive
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="sheetEditModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 px-4">
+            <div class="flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-lg bg-white shadow-xl">
+                <div class="flex items-start justify-between gap-4 border-b border-gray-100 px-6 py-4">
+                    <div>
+                        <h3 id="sheetEditTitle" class="text-lg font-bold text-navy">Ubah Data</h3>
+                        <p id="sheetEditMeta" class="mt-1 text-sm font-semibold text-green-700"></p>
+                    </div>
+                    <button id="closeSheetEditModal" type="button" class="text-gray-400 hover:text-gray-700" aria-label="Tutup popup ubah data">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <form id="sheetEditForm" class="flex min-h-0 flex-1 flex-col">
+                    <div class="min-h-0 flex-1 overflow-auto p-6">
+                        <div id="sheetEditMessage" class="mb-4 rounded-lg bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-800">Memuat data...</div>
+                        <div id="sheetEditTableWrap" class="overflow-x-auto rounded-lg border border-gray-200"></div>
+                    </div>
+                    <div class="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 px-6 py-4">
+                        <div class="flex flex-wrap gap-2">
+                            <button id="sheetEditAddRow" type="button" class="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+                                <i class="fas fa-plus text-xs"></i> Tambah Baris
+                            </button>
+                            <button id="sheetEditOpenSheet" type="button" class="inline-flex items-center gap-2 rounded-lg border border-green-200 px-3 py-2 text-sm font-semibold text-green-700 hover:bg-green-50">
+                                <i class="fas fa-arrow-up-right-from-square text-xs"></i> Buka Sheet
+                            </button>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            <button id="sheetEditRefresh" type="button" class="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+                                <i class="fas fa-rotate text-xs"></i> Muat Ulang
+                            </button>
+                            <button id="cancelSheetEdit" type="button" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">Batal</button>
+                            <button id="sheetEditSave" type="submit" class="inline-flex items-center gap-2 rounded-lg bg-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-green-800 disabled:cursor-not-allowed disabled:opacity-60">
+                                <i class="fas fa-floppy-disk text-xs"></i> Simpan Perubahan
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="userManageModal" class="auth-modal hidden" role="dialog" aria-modal="true" aria-labelledby="userManageTitle">
+            <div class="auth-modal-panel">
+                <div class="auth-modal-header">
+                    <div>
+                        <h3 id="userManageTitle">Kelola User</h3>
+                        <p>Data user dibaca dari Google Sheets tanpa menampilkan password.</p>
+                    </div>
+                    <button id="closeUserManageModal" type="button" class="auth-modal-close" aria-label="Tutup kelola user">
+                        <i class="fas fa-times" aria-hidden="true"></i>
+                    </button>
+                </div>
+                <div id="userManageContent" class="auth-modal-content">Memuat user...</div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const uploadButton = document.getElementById('uploadButton');
+        const uploadModal = document.getElementById('uploadModal');
+        const closeUploadModal = document.getElementById('closeUploadModal');
+        const cancelUpload = document.getElementById('cancelUpload');
+        const uploadForm = document.getElementById('uploadForm');
+        const uploadKategori = document.getElementById('uploadKategori');
+        const uploadSubKategori = document.getElementById('uploadSubKategori');
+        const uploadFile = document.getElementById('uploadFile');
+        const uploadInfo = document.getElementById('uploadInfo');
+        const submitUploadButton = document.getElementById('submitUploadButton');
+        const perencanaanButton = document.getElementById('perencanaanButton');
+        const perencanaanDropdown = document.getElementById('perencanaanDropdown');
+        const perencanaanIcon = document.getElementById('perencanaanIcon');
+        const penganggaranButton = document.getElementById('penganggaranButton');
+        const penganggaranDropdown = document.getElementById('penganggaranDropdown');
+        const penganggaranIcon = document.getElementById('penganggaranIcon');
+        const dataDukungButton = document.getElementById('dataDukungButton');
+        const dataDukungDropdown = document.getElementById('dataDukungDropdown');
+        const dataDukungIcon = document.getElementById('dataDukungIcon');
+        const monevButton = document.getElementById('monevButton');
+        const monevDropdown = document.getElementById('monevDropdown');
+        const monevIcon = document.getElementById('monevIcon');
+        const arsipButton = document.getElementById('arsipButton');
+        const arsipDropdown = document.getElementById('arsipDropdown');
+        const arsipIcon = document.getElementById('arsipIcon');
+        const financialGauge = document.getElementById('financialGauge');
+        const financialGaugeValue = document.getElementById('financialGaugeValue');
+        const physicalGauge = document.getElementById('physicalGauge');
+        const physicalGaugeValue = document.getElementById('physicalGaugeValue');
+        const editCapaianButton = document.getElementById('editCapaianButton');
+        const capaianStatus = document.getElementById('capaianStatus');
+        const programChart = document.getElementById('programChart');
+        const editProgramButton = document.getElementById('editProgramButton');
+        const programStatus = document.getElementById('programStatus');
+        const monthlyChart = document.getElementById('monthlyChart');
+        const editMonthlyButton = document.getElementById('editMonthlyButton');
+        const monthlyStatus = document.getElementById('monthlyStatus');
+        const indicatorCardGrid = document.getElementById('indicatorCardGrid');
+        const indicatorCardStatus = document.getElementById('indicatorCardStatus');
+        const infographicPresentationSection = document.getElementById('infographicPresentationSection');
+        const infographicPresentationTitle = document.getElementById('infographicPresentationTitle');
+        const infographicSlidesStatus = document.getElementById('infographicSlidesStatus');
+        const infographicSlidesLoadButton = document.getElementById('infographicSlidesLoadButton');
+        const infographicSlidesOpenLink = document.getElementById('infographicSlidesOpenLink');
+        const infographicSlidesThumbnailList = document.getElementById('infographicSlidesThumbnailList');
+        const infographicSlidesFrame = document.getElementById('infographicSlidesFrame');
+        const infographicSlidesPrevButton = document.getElementById('infographicSlidesPrevButton');
+        const infographicSlidesNextButton = document.getElementById('infographicSlidesNextButton');
+        const infographicSlidesCounter = document.getElementById('infographicSlidesCounter');
+        const immediateOutputChart = document.getElementById('immediateOutputChart');
+        const immediateOutputStatus = document.getElementById('immediateOutputStatus');
+        const editImmediateOutputButton = document.getElementById('editImmediateOutputButton');
+        const immediateOutputToggleButton = document.getElementById('immediateOutputToggleButton');
+        const intermediateOutcomeChart = document.getElementById('intermediateOutcomeChart');
+        const intermediateOutcomeStatus = document.getElementById('intermediateOutcomeStatus');
+        const editIntermediateOutcomeButton = document.getElementById('editIntermediateOutcomeButton');
+        const intermediateOutcomeToggleButton = document.getElementById('intermediateOutcomeToggleButton');
+        const ultimateOutcomeChart = document.getElementById('ultimateOutcomeChart');
+        const ultimateOutcomeStatus = document.getElementById('ultimateOutcomeStatus');
+        const editUltimateOutcomeButton = document.getElementById('editUltimateOutcomeButton');
+        const ultimateOutcomeToggleButton = document.getElementById('ultimateOutcomeToggleButton');
+        const beritaGrid = document.getElementById('beritaGrid');
+        const beritaStatus = document.getElementById('beritaStatus');
+        const sheetEditModal = document.getElementById('sheetEditModal');
+        const sheetEditForm = document.getElementById('sheetEditForm');
+        const sheetEditTitle = document.getElementById('sheetEditTitle');
+        const sheetEditMeta = document.getElementById('sheetEditMeta');
+        const sheetEditMessage = document.getElementById('sheetEditMessage');
+        const sheetEditTableWrap = document.getElementById('sheetEditTableWrap');
+        const sheetEditAddRow = document.getElementById('sheetEditAddRow');
+        const sheetEditOpenSheet = document.getElementById('sheetEditOpenSheet');
+        const sheetEditRefresh = document.getElementById('sheetEditRefresh');
+        const sheetEditSave = document.getElementById('sheetEditSave');
+        const closeSheetEditModal = document.getElementById('closeSheetEditModal');
+        const cancelSheetEdit = document.getElementById('cancelSheetEdit');
+        const recentDocumentsTable = document.getElementById('recentDocumentsTable');
+        const DASHBOARD_SPREADSHEET_ID = '1aBSadBTJq7lylc-YJyM2_4A-EWlDxd66FCdq41Ylz0w';
+        const CAPAIAN_SPREADSHEET_ID = '1aBSadBTJq7lylc-YJyM2_4A-EWlDxd66FCdq41Ylz0w';
+        const INFOGRAPHIC_PRESENTATION_ID = '1ObJtG7GTgaHtBF1nIgD--GlqQKXfEUCIyEs05z77UJs';
+        const INFOGRAPHIC_PRESENTATION_FALLBACK_TITLE = 'Infografis';
+        const INFOGRAPHIC_PRESENTATION_VIEW_URL = `https://docs.google.com/presentation/d/${INFOGRAPHIC_PRESENTATION_ID}/edit?usp=sharing`;
+        const INFOGRAPHIC_SLIDE_AUTOPLAY_MS = 8000;
+        const INFOGRAPHIC_PRESENTATION_EMBED_URL = `https://docs.google.com/presentation/d/${INFOGRAPHIC_PRESENTATION_ID}/embed?start=true&loop=true&delayms=${INFOGRAPHIC_SLIDE_AUTOPLAY_MS}`;
+        const DASHBOARD_SHEETS = {
+            capaian: 'capaian',
+            realisasi: 'realisasi',
+            bulanan: 'bulanan',
+            card: 'card',
+            predikat: 'predikat',
+            output: 'output',
+            outcome: 'outcome',
+            impact: 'impact',
+            berita: ['desiminasi', 'diseminasi'],
+        };
+        const DASHBOARD_EDITORS = {
+            capaian: {
+                label: 'Capaian',
+                spreadsheetId: CAPAIAN_SPREADSHEET_ID,
+                sheetName: DASHBOARD_SHEETS.capaian,
+                range: 'A1:Z2',
+                dataRowNumber: 2,
+                fields: [
+                    {
+                        label: 'Capaian Keuangan',
+                        columnName: 'Capaian Keuangan',
+                    },
+                    {
+                        label: 'Capaian Fisik',
+                        columnName: 'Capaian Fisik',
+                    },
+                ],
+            },
+            program: {
+                label: 'Program',
+                spreadsheetId: DASHBOARD_SPREADSHEET_ID,
+                sheetName: DASHBOARD_SHEETS.realisasi,
+                range: 'A1:Z120',
+            },
+            monthly: {
+                label: 'Bulanan',
+                spreadsheetId: DASHBOARD_SPREADSHEET_ID,
+                sheetName: DASHBOARD_SHEETS.bulanan,
+                range: 'A1:Z80',
+            },
+            immediateOutput: {
+                label: 'Immediate Output',
+                spreadsheetId: DASHBOARD_SPREADSHEET_ID,
+                sheetName: DASHBOARD_SHEETS.output,
+                range: 'A1:Z200',
+            },
+            intermediateOutcome: {
+                label: 'Intermediate Outcome',
+                spreadsheetId: DASHBOARD_SPREADSHEET_ID,
+                sheetName: DASHBOARD_SHEETS.outcome,
+                range: 'A1:Z200',
+            },
+            ultimateOutcome: {
+                label: 'Ultimate Outcome',
+                spreadsheetId: DASHBOARD_SPREADSHEET_ID,
+                sheetName: DASHBOARD_SHEETS.impact,
+                range: 'A1:Z200',
+            },
+        };
+        const DASHBOARD_CARD_ITEMS = [
+            {
+                label: 'Indeks Desa',
+                icon: 'fa-city',
+                accent: '#2563eb',
+                soft: '#eff6ff',
+                border: '#bfdbfe',
+                aliases: ['Indeks Desa', 'IDM', 'Indeks Desa Membangun'],
+            },
+            {
+                label: 'SAKIP',
+                icon: 'fa-chart-line',
+                accent: '#0f766e',
+                soft: '#ecfdf5',
+                border: '#99f6e4',
+                aliases: ['SAKIP', 'Sistem Akuntabilitas Kinerja Instansi Pemerintah'],
+            },
+            {
+                label: 'SPIP',
+                icon: 'fa-shield-halved',
+                accent: '#7c3aed',
+                soft: '#f5f3ff',
+                border: '#ddd6fe',
+                aliases: ['SPIP', 'Sistem Pengendalian Intern Pemerintah'],
+            },
+            {
+                label: 'SKM',
+                icon: 'fa-users',
+                accent: '#d97706',
+                soft: '#fffbeb',
+                border: '#fde68a',
+                aliases: ['SKM', 'Survei Kepuasan Masyarakat', 'Survey Kepuasan Masyarakat'],
+            },
+        ];
+        // Ganti nilai ini dengan OAuth Client ID dari Google Cloud agar upload dan edit sheet otomatis aktif.
+        const GOOGLE_CLIENT_ID = '505513700952-990egdos6oqm8cnu5ue76tgc5tiug4rp.apps.googleusercontent.com';
+        const GOOGLE_DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+        const GOOGLE_SHEETS_SCOPE = 'https://www.googleapis.com/auth/spreadsheets';
+        const GOOGLE_SLIDES_SCOPE = 'https://www.googleapis.com/auth/presentations.readonly';
+        const GOOGLE_API_SCOPES = `${GOOGLE_DRIVE_SCOPE} ${GOOGLE_SHEETS_SCOPE}`;
+        const UPLOADED_ARCHIVE_STORAGE_KEY = 'sidotiUploadedArchiveDocuments';
+        let googleAccessToken = '';
+        let googleAccessTokenScopes = '';
+        let latestUploadedDocumentId = '';
+        let activeSheetEditor = null;
+        let sheetEditorHeaders = [];
+        let sheetEditorFieldTargets = [];
+        let sheetEditorOriginalRowCount = 0;
+        let sheetEditorOriginalColumnCount = 0;
+        let infographicSlides = [];
+        let activeInfographicSlideIndex = 0;
+        let infographicSlidesAutoplayTimer = null;
+        let infographicSlidesControlsPinned = false;
+        const outcomeDetailStates = {
+            immediate: false,
+            intermediate: false,
+            ultimate: false,
+        };
+        const outcomeToggleButtons = {
+            immediate: immediateOutputToggleButton,
+            intermediate: intermediateOutcomeToggleButton,
+            ultimate: ultimateOutcomeToggleButton,
+        };
+        const perencanaanDocuments = [
+            {
+                name: 'RPJMD',
+                url: 'https://drive.google.com/file/d/1nFwD_DBcyt0JVYrPPVh4iZAipsONrA_4/view?usp=drive_link',
+            },
+            {
+                name: 'Renstra',
+                url: 'https://drive.google.com/file/d/1zTWC5SAV9e9fbLSOfRNb52L0KqX7oKJP/view?usp=drive_link',
+            },
+            {
+                name: 'Renja',
+                url: 'https://drive.google.com/file/d/1f3dOOyOFqkiqTXW1VwGtHREY1E5uKeUj/view?usp=drive_link',
+            },
+            {
+                name: 'Rencana Aksi',
+                url: 'https://drive.google.com/file/d/1jschv7zOnCcNQzZdeccQ2v9mmjGWsMV_/view?usp=drive_link',
+            },
+            {
+                name: 'Indikator Kinerja Utama',
+                url: 'https://drive.google.com/file/d/1ia6PDD8mZseKP4nduRsgDKh88MSsZTJm/view?usp=drive_link',
+            },
+            {
+                name: 'Perjanjian Kinerja',
+                url: 'https://drive.google.com/file/d/13wdSBMXlN6OgQeVEhQWnS2APrx3p0Qh4/view?usp=drive_link',
+            },
+            {
+                name: 'Rencana Umum Pengadaan',
+                url: 'https://drive.google.com/file/d/1J2LyzKFsVyJqfLAHc97BdiCsF4fj-pJv/view?usp=drive_link',
+            },
+        ];
+        const penganggaranDocuments = [
+            {
+                name: 'RKA 2026',
+                url: 'https://drive.google.com/file/d/1anOU8ygqWAexNk-uFTBy4qfC6YN-chAB/view?usp=drive_link',
+            },
+            {
+                name: 'DPA',
+                url: 'https://drive.google.com/file/d/1-_mJpSS9Wr0ByAeFvDvE28zUtjpUGyVU/view?usp=drive_link',
+            },
+        ];
+        const dataDukungDocuments = [
+            {
+                name: 'SOTK',
+                url: 'https://drive.google.com/file/d/1YgA4urjasINOoC4urIvBbabsmS3_uRoS/view?usp=drive_link',
+            },
+            {
+                name: 'Cascading',
+                url: 'https://drive.google.com/file/d/1YgA4urjasINOoC4urIvBbabsmS3_uRoS/view?usp=drive_link',
+            },
+            {
+                name: 'Penjenjangan Kinerja',
+                url: 'https://drive.google.com/file/d/1j9oEwbKrTz2lwvSRrY6WP810D8o-nJ84/view?usp=drive_link',
+            },
+            {
+                name: 'Peta Proses Bisnis',
+                url: 'https://drive.google.com/file/d/1qPsrJX-9ByBtrRWm5AR-qfN_iR6Rutgc/view?usp=drive_link',
+            },
+            {
+                name: 'Standar Operasional Prosedur',
+                url: 'https://drive.google.com/file/d/11W1r4PmM_rSKIPVq8Xk37W-ke5cW7_70/view?usp=drive_link',
+            },
+            {
+                name: 'Manajemen Risiko',
+                url: 'https://drive.google.com/file/d/11ddZIGqHEQsIk8AvCTrDPOOaazEGa45S/view?usp=drive_link',
+            },
+            {
+                name: 'Analisis Jabatan',
+                url: 'https://drive.google.com/file/d/15z4C3wvAuEZp30tgJe0S5xIsKAQjaZAZ/view?usp=drive_link',
+            },
+            {
+                name: 'Indeks Desa 2025',
+                url: 'https://drive.google.com/file/d/11BR79VkUapOk1LYXyG9vKviX5CDb-Wxa/view?usp=drive_link',
+            },
+        ];
+        const monevDocuments = [
+            {
+                name: 'LKPJ',
+                url: 'https://drive.google.com/file/d/1r7zYZFzSxcvgWTdn50hfS2J8SpE3wIPA/view?usp=drive_link',
+            },
+            {
+                name: 'LPPD',
+                url: 'https://drive.google.com/file/d/11sKuNsAy_nokvQw0nFNTuzAY33YO03eC/view?usp=drive_link',
+            },
+            {
+                name: 'LKjIP',
+                url: 'https://drive.google.com/file/d/1mf25e5VsHY9UsLpoPC6iv-qwgOLpQUIx/view?usp=drive_link',
+            },
+            {
+                name: 'SPIP',
+                url: 'https://docs.google.com/spreadsheets/d/1Injd6EQ3FHUKgtlWEfIUYhiY23HIxT8H/edit?usp=drive_link&ouid=106938424430546233044&rtpof=true&sd=true',
+            },
+            {
+                name: 'Monev Renaksi',
+                url: 'https://drive.google.com/file/d/1CAo8U4vWP3ZlaGp9W0d3IOiv6MXMZ8V4/view?usp=drive_link',
+            },
+            {
+                name: 'Monev Dana Desa',
+                url: 'https://drive.google.com/file/d/1Nm5fWXy87EeYCvzkYhUsuCZ8SXoqH_IN/view?usp=drive_link',
+            },
+            {
+                name: 'Survey Kepuasan Masyarakat',
+                url: 'https://drive.google.com/file/d/1n7YstTu3H3wkhFXy5lDN--oj9nVIi2cO/view?usp=drive_link',
+            },
+            {
+                name: 'CaLK',
+                url: 'https://drive.google.com/file/d/1ufo8NOIAF-Ax5KdUAVj6Et9l7_l_zUHr/view?usp=drive_link',
+            },
+            {
+                name: 'Realisasi Bulanan',
+                url: 'https://drive.google.com/file/d/1R5mD6Bjtj9J5VMgcs1qSwJrYaHrJNlQ9/view?usp=drive_link',
+            },
+        ];
+        const arsipCategories = [
+            {
+                name: 'Data Tahunan',
+                items: [
+                    '2024',
+                    '2025',
+                    '2026',
+                    '2027',
+                    '2028',
+                    '2029',
+                    '2030',
+                ],
+            },
+            {
+                name: 'Dokumen Teknis',
+                items: [
+                    'Sekretariat Dinas',
+                    'Perencanaan',
+                    'Kepegawaian',
+                    'Bidang Pemerintahan Desa',
+                    'Bidang Penguatan LKD',
+                    'Bidang Pemanfaatan TTG, UEP dan SDA',
+                ],
+            },
+            {
+                name: 'Persuratan',
+                items: [
+                    'Sekretariat Dinas',
+                    'Perencanaan',
+                    'Kepegawaian',
+                    'Bidang Pemerintahan Desa',
+                    'Bidang Penguatan LKD',
+                    'Bidang Pemanfaatan TTG,UEP dan SDA',
+                ],
+            },
+            {
+                name: 'Regulasi',
+                items: [
+                    'Undang-undang',
+                    'Peraturan Pemerintah',
+                    'Peraturan Presiden',
+                    'Peraturan Menteri Dalam Negeri',
+                    'Peraturan Menteri Keuangan',
+                    'Peraturan Menteri Desa',
+                    'Peraturan Daerah',
+                    'Peraturan Bupati',
+                    'Peraturan lainnya (Instruksi, Edaran, Juknis dll)',
+                ],
+            },
+        ];
+        const uploadRootFolder = {
+            name: 'Arsip',
+            url: 'https://drive.google.com/drive/folders/1m-Zvxh_7JWi-xggMBHcqzTWm1R8emOzq?usp=drive_link',
+        };
+        const uploadFolders = {
+            'Data Tahunan': [
+                {
+                    name: '2024',
+                    url: 'https://drive.google.com/drive/folders/1JsMoHoZBdXjBv8bRKVuKLVtm5-blxqnU?usp=drive_link',
+                },
+                {
+                    name: '2025',
+                    url: 'https://drive.google.com/drive/folders/1pTcw43aP8N8FAY8eGh7YtOCCNh_1IsIa?usp=drive_link',
+                },
+                {
+                    name: '2026',
+                    url: 'https://drive.google.com/drive/folders/1gseEGWc0mzVhcPkxTQKIhYm7fuPhJGuG?usp=drive_link',
+                },
+                {
+                    name: '2027',
+                    url: 'https://drive.google.com/drive/folders/1p5tgvw4WqGthu7NmhR6AHu12ctwZYMij?usp=drive_link',
+                },
+                {
+                    name: '2028',
+                    url: 'https://drive.google.com/drive/folders/1JgsvQgdbEvY4ne6SWLdClS-ppzjBH5Ol?usp=drive_link',
+                },
+                {
+                    name: '2029',
+                    url: 'https://drive.google.com/drive/folders/1_6vaem030IENlr55uQTU5ZA14KI4J7ne?usp=drive_link',
+                },
+                {
+                    name: '2030',
+                    url: 'https://drive.google.com/drive/folders/11IEZ0BSE2FpVLx0xStUrzlE_qjMHJrdn?usp=drive_link',
+                },
+            ],
+            'Dokumen Teknis': [
+                {
+                    name: 'Sekretariat Dinas',
+                    url: 'https://drive.google.com/drive/folders/1EWYmj16FdRcH767oWJ8xVCVKVAFGjwLQ?usp=drive_link',
+                },
+                {
+                    name: 'Perencanaan',
+                    url: 'https://drive.google.com/drive/folders/153D62KI4gFDpoV0drJRxo1BGRtet28Gs?usp=drive_link',
+                },
+                {
+                    name: 'Kepegawaian',
+                    url: 'https://drive.google.com/drive/folders/1BgEYxafzK8SxSe0TJFjUmGa9j-xryySZ?usp=drive_link',
+                },
+                {
+                    name: 'Bidang Pemerintahan Desa',
+                    url: 'https://drive.google.com/drive/folders/1wG_rxvKQQiy8UQkXI9biQT_ij8wKyfm3?usp=drive_link',
+                },
+                {
+                    name: 'Bidang Penguatan LKD',
+                    url: 'https://drive.google.com/drive/folders/15YzHeIUmkEZr7BJKMtJjy3CO5FkhMjoc?usp=drive_link',
+                },
+                {
+                    name: 'Bidang Pemanfaatan TTG, UEP dan SDA',
+                    url: 'https://drive.google.com/drive/folders/1aoHaOHoIprnGMJgb2-PvqmCHfqjtT4B0?usp=drive_link',
+                },
+            ],
+            Persuratan: [
+                {
+                    name: 'Sekretariat Dinas',
+                    url: 'https://drive.google.com/drive/folders/1EWYmj16FdRcH767oWJ8xVCVKVAFGjwLQ?usp=drive_link',
+                },
+                {
+                    name: 'Perencanaan',
+                    url: 'https://drive.google.com/drive/folders/153D62KI4gFDpoV0drJRxo1BGRtet28Gs?usp=drive_link',
+                },
+                {
+                    name: 'Kepegawaian',
+                    url: 'https://drive.google.com/drive/folders/1BgEYxafzK8SxSe0TJFjUmGa9j-xryySZ?usp=drive_link',
+                },
+                {
+                    name: 'Bidang Pemerintahan Desa',
+                    url: 'https://drive.google.com/drive/folders/1wG_rxvKQQiy8UQkXI9biQT_ij8wKyfm3?usp=drive_link',
+                },
+                {
+                    name: 'Bidang Penguatan LKD',
+                    url: 'https://drive.google.com/drive/folders/15YzHeIUmkEZr7BJKMtJjy3CO5FkhMjoc?usp=drive_link',
+                },
+                {
+                    name: 'Bidang Pemanfaatan TTG,UEP dan SDA',
+                    url: 'https://drive.google.com/drive/folders/1aoHaOHoIprnGMJgb2-PvqmCHfqjtT4B0?usp=drive_link',
+                },
+            ],
+            Regulasi: [
+                {
+                    name: 'Undang-undang',
+                    url: 'https://drive.google.com/drive/folders/1dOPjZd7JR1OkMXaaCHoW3gd7MPjVbCfN?usp=drive_link',
+                },
+                {
+                    name: 'Peraturan Pemerintah',
+                    url: 'https://drive.google.com/drive/folders/1VsvmNDVbYaGvVTiSE19ZdYxUEkfoLfke?usp=drive_link',
+                },
+                {
+                    name: 'Peraturan Presiden',
+                    url: 'https://drive.google.com/drive/folders/1Am4T5ZH5FDMoekJfN7g_ERMLSBtzGja9?usp=drive_link',
+                },
+                {
+                    name: 'Peraturan Menteri Dalam Negeri',
+                    url: 'https://drive.google.com/drive/folders/1BGl_pBXPdGZL46SO1z08cy_nVizBXmBw?usp=drive_link',
+                },
+                {
+                    name: 'Peraturan Menteri Keuangan',
+                    url: 'https://drive.google.com/drive/folders/1feYjnhDdDvHTOIe0WXNKIzK0vODq8PR4?usp=drive_link',
+                },
+                {
+                    name: 'Peraturan Menteri Desa',
+                    url: 'https://drive.google.com/drive/folders/1hv2izyE_3wLVEmY17YiOIoi4HRdrXSfl?usp=drive_link',
+                },
+                {
+                    name: 'Peraturan Daerah',
+                    url: 'https://drive.google.com/drive/folders/1-oXvme-ORqQfYoLMCWm60TMhOHXRWhhK?usp=drive_link',
+                },
+                {
+                    name: 'Peraturan Bupati',
+                    url: 'https://drive.google.com/drive/folders/1YY8tgCR3ThKjBB1gvd6G4YpeaNlGW7eT?usp=drive_link',
+                },
+                {
+                    name: 'Peraturan lainnya (Instruksi, Edaran, Juknis dll)',
+                    url: 'https://drive.google.com/drive/folders/11jzq4hHmeWJJMrxbR0utZmC7pHy2uv0h?usp=drive_link',
+                },
+            ],
+        };
+
+        const navEscapeHtml = (value) => String(value ?? '')
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#039;');
+
+        const getNavigationDriveFileId = (url) => {
+            const filePathMatch = String(url || '').match(/\/file\/d\/([^/?#]+)/);
+
+            if (filePathMatch) {
+                return filePathMatch[1];
+            }
+
+            const idMatch = String(url || '').match(/[?&]id=([^&#]+)/);
+            return idMatch ? idMatch[1] : '';
+        };
+
+        const createNavigationDownloadUrl = (url) => {
+            const fileId = getNavigationDriveFileId(url);
+            return fileId ? `https://drive.google.com/uc?export=download&id=${encodeURIComponent(fileId)}` : url;
+        };
+
+        const normalizeNavigationKey = (value) => String(value ?? '')
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-z0-9]+/g, '');
+
+        const isGuestRole = () => normalizeNavigationKey(window.sidotiAuth?.user?.role) === 'tamu';
+
+        const isRestrictedPenganggaranItem = ({ name }) => {
+            const nameKey = normalizeNavigationKey(name);
+
+            return nameKey === 'rka2026' || nameKey === 'dpa';
+        };
+
+        const renderNavigationDocuments = (documents) => documents
+            .map(({ name, url }) => `
+                <div class="flex items-center gap-2 px-12 py-2 text-sm text-blue-100 hover:bg-blue-800 hover:text-white transition">
+                    <a href="${navEscapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="flex min-w-0 flex-1 items-center" title="Lihat ${navEscapeHtml(name)}">
+                        <i class="fas fa-folder-open mr-3"></i>
+                        <span class="min-w-0 truncate">${navEscapeHtml(name)}</span>
+                    </a>
+                    <a href="${navEscapeHtml(createNavigationDownloadUrl(url))}" target="_blank" rel="noopener noreferrer" class="inline-flex h-8 w-8 flex-none items-center justify-center rounded-full border border-blue-700/70 bg-blue-950/40 text-blue-100 hover:border-white hover:bg-blue-700 hover:text-white transition" title="Download ${navEscapeHtml(name)}" aria-label="Download ${navEscapeHtml(name)}">
+                        <i class="fas fa-download text-[11px]" aria-hidden="true"></i>
+                    </a>
+                </div>
+            `)
+            .join('');
+
+        const renderNavigationDropdowns = () => {
+            const visiblePenganggaranDocuments = isGuestRole()
+                ? penganggaranDocuments.filter((item) => !isRestrictedPenganggaranItem(item))
+                : penganggaranDocuments;
+
+            perencanaanDropdown.innerHTML = renderNavigationDocuments(perencanaanDocuments);
+            penganggaranDropdown.innerHTML = renderNavigationDocuments(visiblePenganggaranDocuments);
+            dataDukungDropdown.innerHTML = renderNavigationDocuments(dataDukungDocuments);
+            monevDropdown.innerHTML = renderNavigationDocuments(monevDocuments);
+        };
+
+        renderNavigationDropdowns();
+
+        window.addEventListener('sidoti:auth-change', () => {
+            renderNavigationDropdowns();
+        });
+        const escapeHtml = (value) => String(value)
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#039;');
+
+        const moneyFormatter = new Intl.NumberFormat('id-ID', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        });
+        const chartStatusClasses = {
+            loading: 'rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700',
+            success: 'rounded-full bg-green-50 px-3 py-1 text-xs font-semibold text-green-700',
+            error: 'rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-700',
+        };
+
+        const setChartStatus = (element, text, type = 'loading') => {
+            element.textContent = text;
+            element.className = chartStatusClasses[type] || chartStatusClasses.loading;
+        };
+        const infographicSlidesWakeLayer = '<button type="button" class="slides-frame-wake-layer" aria-label="Tampilkan kontrol slide"></button>';
+
+        const setInfographicSlidesBusy = (isBusy) => {
+            infographicSlidesLoadButton.disabled = isBusy;
+            infographicSlidesLoadButton.classList.toggle('opacity-60', isBusy);
+            infographicSlidesLoadButton.classList.toggle('cursor-not-allowed', isBusy);
+        };
+
+        const setInfographicSlidesControlsVisible = (isVisible) => {
+            infographicPresentationSection.classList.toggle('is-controls-visible', isVisible);
+        };
+
+        const getInfographicSlideCountText = () => {
+            if (!infographicSlides.length) {
+                return 'Google Slides';
+            }
+
+            return `Slide ${activeInfographicSlideIndex + 1} dari ${infographicSlides.length}`;
+        };
+
+        const updateInfographicNavigation = () => {
+            const hasSlides = infographicSlides.length > 0;
+
+            infographicSlidesCounter.textContent = getInfographicSlideCountText();
+            infographicSlidesPrevButton.disabled = !hasSlides || activeInfographicSlideIndex <= 0;
+            infographicSlidesNextButton.disabled = !hasSlides || activeInfographicSlideIndex >= infographicSlides.length - 1;
+        };
+
+        const renderInfographicThumbnailList = () => {
+            infographicSlidesThumbnailList.innerHTML = '';
+        };
+
+        const stopInfographicAutoplay = () => {
+            if (!infographicSlidesAutoplayTimer) {
+                return;
+            }
+
+            window.clearInterval(infographicSlidesAutoplayTimer);
+            infographicSlidesAutoplayTimer = null;
+        };
+
+        const startInfographicAutoplay = () => {
+            stopInfographicAutoplay();
+
+            if (infographicSlides.length <= 1) {
+                return;
+            }
+
+            infographicSlidesAutoplayTimer = window.setInterval(() => {
+                setInfographicActiveSlide((activeInfographicSlideIndex + 1) % infographicSlides.length, false);
+            }, INFOGRAPHIC_SLIDE_AUTOPLAY_MS);
+        };
+
+        const renderInfographicFallback = () => {
+            stopInfographicAutoplay();
+            infographicSlides = [];
+            activeInfographicSlideIndex = 0;
+            infographicPresentationTitle.textContent = INFOGRAPHIC_PRESENTATION_FALLBACK_TITLE;
+            infographicSlidesFrame.style.aspectRatio = '16 / 9';
+            infographicSlidesFrame.innerHTML = `
+                <iframe src="${escapeHtml(INFOGRAPHIC_PRESENTATION_EMBED_URL)}" title="Presentasi ${escapeHtml(INFOGRAPHIC_PRESENTATION_FALLBACK_TITLE)}" allowfullscreen></iframe>
+                ${infographicSlidesWakeLayer}
+            `;
+            renderInfographicThumbnailList();
+            updateInfographicNavigation();
+            setChartStatus(infographicSlidesStatus, 'Google Slides', 'success');
+        };
+
+        const renderInfographicError = (message) => {
+            stopInfographicAutoplay();
+            infographicSlides = [];
+            activeInfographicSlideIndex = 0;
+            infographicSlidesFrame.style.aspectRatio = '16 / 9';
+            infographicSlidesFrame.innerHTML = `
+                <div class="slides-frame-message">
+                    <i class="fas fa-triangle-exclamation" aria-hidden="true"></i>
+                    <span>${escapeHtml(message)}</span>
+                </div>
+                ${infographicSlidesWakeLayer}
+            `;
+            renderInfographicThumbnailList();
+            updateInfographicNavigation();
+            setChartStatus(infographicSlidesStatus, 'Gagal', 'error');
+        };
+
+        const renderInfographicActiveSlide = () => {
+            if (!infographicSlides.length) {
+                updateInfographicNavigation();
+                return;
+            }
+
+            const slide = infographicSlides[activeInfographicSlideIndex];
+            infographicSlidesFrame.innerHTML = `
+                <img src="${escapeHtml(slide.thumbnailUrl)}" alt="Slide ${activeInfographicSlideIndex + 1} - ${escapeHtml(infographicPresentationTitle.textContent)}">
+                ${infographicSlidesWakeLayer}
+            `;
+            renderInfographicThumbnailList();
+            updateInfographicNavigation();
+        };
+
+        const setInfographicActiveSlide = (nextIndex, shouldResetAutoplay = true) => {
+            if (!infographicSlides.length) {
+                return;
+            }
+
+            activeInfographicSlideIndex = Math.min(Math.max(nextIndex, 0), infographicSlides.length - 1);
+            renderInfographicActiveSlide();
+
+            if (shouldResetAutoplay) {
+                startInfographicAutoplay();
+            }
+        };
+
+        const getPresentationAspectRatio = (pageSize) => {
+            const width = Number(pageSize?.width?.magnitude);
+            const height = Number(pageSize?.height?.magnitude);
+
+            return width > 0 && height > 0 ? `${width} / ${height}` : '16 / 9';
+        };
+
+        const fetchSlidesApiJson = async (path, accessToken) => {
+            const token = accessToken || await getGoogleSlidesAccessToken();
+            const response = await fetch(`https://slides.googleapis.com/v1/${path}`, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText || 'Google Slides tidak dapat dimuat.');
+            }
+
+            return response.json();
+        };
+
+        const loadInfographicPresentation = async () => {
+            try {
+                stopInfographicAutoplay();
+                setInfographicSlidesBusy(true);
+                setChartStatus(infographicSlidesStatus, 'Memuat', 'loading');
+
+                const accessToken = await getGoogleSlidesAccessToken();
+                const presentation = await fetchSlidesApiJson(`presentations/${INFOGRAPHIC_PRESENTATION_ID}?fields=title,pageSize,slides(objectId)`, accessToken);
+                const slides = presentation.slides || [];
+
+                if (!slides.length) {
+                    renderInfographicError('Presentasi infografis belum memiliki slide.');
+                    return;
+                }
+
+                const thumbnailResults = await Promise.all(slides.map((slide) => fetchSlidesApiJson(
+                    `presentations/${INFOGRAPHIC_PRESENTATION_ID}/pages/${slide.objectId}/thumbnail?thumbnailProperties.mimeType=PNG&thumbnailProperties.thumbnailSize=LARGE`,
+                    accessToken,
+                )));
+
+                infographicSlides = slides.map((slide, index) => ({
+                    objectId: slide.objectId,
+                    thumbnailUrl: thumbnailResults[index].contentUrl,
+                })).filter((slide) => slide.thumbnailUrl);
+                activeInfographicSlideIndex = 0;
+                infographicPresentationTitle.textContent = presentation.title || INFOGRAPHIC_PRESENTATION_FALLBACK_TITLE;
+                infographicSlidesFrame.style.aspectRatio = getPresentationAspectRatio(presentation.pageSize);
+
+                if (!infographicSlides.length) {
+                    renderInfographicError('Thumbnail Google Slides belum tersedia.');
+                    return;
+                }
+
+                renderInfographicActiveSlide();
+                startInfographicAutoplay();
+                setChartStatus(infographicSlidesStatus, `${infographicSlides.length} slide`, 'success');
+            } catch (error) {
+                renderInfographicError('Presentasi tidak dapat dibaca. Pastikan akun Google memiliki akses ke file infografis.');
+            } finally {
+                setInfographicSlidesBusy(false);
+            }
+        };
+
+        const sheetEditMessageClasses = {
+            info: 'mb-4 rounded-lg bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-800',
+            success: 'mb-4 rounded-lg bg-green-50 px-4 py-3 text-sm font-semibold text-green-800',
+            error: 'mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm font-semibold text-red-800',
+        };
+
+        const setSheetEditMessage = (text, type = 'info') => {
+            sheetEditMessage.textContent = text;
+            sheetEditMessage.className = sheetEditMessageClasses[type] || sheetEditMessageClasses.info;
+        };
+
+        const setSheetEditModalOpen = (isOpen) => {
+            sheetEditModal.classList.toggle('hidden', !isOpen);
+            sheetEditModal.classList.toggle('flex', isOpen);
+        };
+
+        const setSheetEditBusy = (isBusy) => {
+            sheetEditSave.disabled = isBusy;
+            sheetEditAddRow.disabled = isBusy;
+            sheetEditRefresh.disabled = isBusy;
+            sheetEditOpenSheet.disabled = isBusy;
+            sheetEditTableWrap.querySelectorAll('input, button').forEach((element) => {
+                element.disabled = isBusy;
+            });
+        };
+
+        const quoteSheetName = (sheetName) => `'${String(sheetName).replaceAll("'", "''")}'`;
+
+        const getColumnName = (columnNumber) => {
+            let name = '';
+            let remaining = columnNumber;
+
+            while (remaining > 0) {
+                const remainder = (remaining - 1) % 26;
+                name = String.fromCharCode(65 + remainder) + name;
+                remaining = Math.floor((remaining - 1) / 26);
+            }
+
+            return name || 'A';
+        };
+
+        const getEditorSpreadsheetId = (config = activeSheetEditor) => config?.spreadsheetId || DASHBOARD_SPREADSHEET_ID;
+
+        const createDashboardSheetUrl = (config = activeSheetEditor) => `https://docs.google.com/spreadsheets/d/${getEditorSpreadsheetId(config)}/edit`;
+
+        const normalizeSheetEditorValues = (values) => {
+            const fallbackValues = values?.length ? values : [['Kolom 1', 'Kolom 2'], ['', '']];
+            const columnCount = Math.max(2, ...fallbackValues.map((row) => row.length));
+
+            return fallbackValues.map((row) => Array.from({ length: columnCount }, (_, index) => row[index] ?? ''));
+        };
+
+        const renderSheetEditorTable = (values) => {
+            const normalizedValues = normalizeSheetEditorValues(values);
+            const [headers, ...dataRows] = normalizedValues;
+            const rows = dataRows.length ? dataRows : [Array.from({ length: headers.length }, () => '')];
+
+            sheetEditorHeaders = headers;
+            sheetEditorFieldTargets = [];
+            sheetEditTableWrap.innerHTML = `
+                <table class="sheet-edit-table w-full">
+                    <thead>
+                        <tr>
+                            ${headers.map((header, index) => `
+                                <th>${escapeHtml(header || `Kolom ${index + 1}`)}</th>
+                            `).join('')}
+                            <th class="w-12 text-center">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows.map((row, rowIndex) => `
+                            <tr>
+                                ${headers.map((header, columnIndex) => `
+                                    <td>
+                                        <input type="text" value="${escapeHtml(row[columnIndex] ?? '')}" data-column-index="${columnIndex}" aria-label="${escapeHtml(header || `Kolom ${columnIndex + 1}`)} baris ${rowIndex + 2}">
+                                    </td>
+                                `).join('')}
+                                <td class="text-center">
+                                    <button type="button" class="sheet-edit-delete-row inline-flex h-9 w-9 items-center justify-center rounded-lg text-red-600 hover:bg-red-50" title="Hapus baris">
+                                        <i class="fas fa-trash-can text-xs"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        };
+
+        const findSheetHeaderIndex = (headers, targetColumnName) => headers.findIndex((header) => (
+            normalizeHeader(header) === normalizeHeader(targetColumnName)
+        ));
+
+        const renderSheetFieldEditor = (values, config) => {
+            const normalizedValues = normalizeSheetEditorValues(values);
+            const headers = normalizedValues[0] || [];
+            const dataRowNumber = config.dataRowNumber || 2;
+            const dataRow = normalizedValues[dataRowNumber - 1] || [];
+
+            sheetEditorHeaders = headers;
+            sheetEditorFieldTargets = config.fields.map((field, index) => {
+                const columnIndex = findSheetHeaderIndex(headers, field.columnName);
+
+                if (columnIndex === -1) {
+                    throw new Error(`Kolom "${field.columnName}" tidak ditemukan di sheet "${config.sheetName}".`);
+                }
+
+                return {
+                    ...field,
+                    inputId: `sheetEditField${index}`,
+                    columnIndex,
+                    columnLetter: getColumnName(columnIndex + 1),
+                    rowNumber: dataRowNumber,
+                    value: dataRow[columnIndex] ?? '',
+                };
+            });
+
+            sheetEditTableWrap.innerHTML = `
+                <div class="grid gap-4 bg-white p-4 sm:grid-cols-2">
+                    ${sheetEditorFieldTargets.map((field) => `
+                        <label for="${field.inputId}" class="block rounded-lg border border-gray-200 bg-gray-50 p-4">
+                            <span class="mb-2 block text-xs font-black uppercase text-green-700">${escapeHtml(field.label)}</span>
+                            <input id="${field.inputId}" type="text" value="${escapeHtml(field.value)}" class="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-900 outline-none focus:border-green-700 focus:ring-2 focus:ring-green-100" placeholder="Contoh: 75%">
+                            <span class="mt-2 block text-[11px] font-semibold text-gray-500">Cell ${field.columnLetter}${field.rowNumber}</span>
+                        </label>
+                    `).join('')}
+                </div>
+            `;
+        };
+
+        const getCurrentSheetEditorValues = () => {
+            const rows = Array.from(sheetEditTableWrap.querySelectorAll('tbody tr')).map((row) => (
+                Array.from(row.querySelectorAll('input[data-column-index]')).map((input) => input.value)
+            ));
+
+            return [sheetEditorHeaders, ...rows];
+        };
+
+        const createPaddedSheetValues = (values) => {
+            const columnCount = Math.max(
+                sheetEditorOriginalColumnCount,
+                ...values.map((row) => row.length),
+            );
+            const rowCount = Math.max(sheetEditorOriginalRowCount, values.length);
+
+            return Array.from({ length: rowCount }, (_, rowIndex) => (
+                Array.from({ length: columnCount }, (_, columnIndex) => values[rowIndex]?.[columnIndex] ?? '')
+            ));
+        };
+
+        const updateSheetEditorFields = async (config) => {
+            const data = sheetEditorFieldTargets.map((field) => ({
+                range: `${quoteSheetName(config.sheetName)}!${field.columnLetter}${field.rowNumber}`,
+                values: [[document.getElementById(field.inputId)?.value ?? '']],
+            }));
+
+            await getSheetsApiJson('values:batchUpdate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    valueInputOption: 'USER_ENTERED',
+                    data,
+                }),
+            }, getEditorSpreadsheetId(config));
+        };
+
+        const getSheetsApiJson = async (path, options = {}, spreadsheetId = DASHBOARD_SPREADSHEET_ID) => {
+            const accessToken = await getGoogleAccessToken();
+            const response = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/${path}`, {
+                ...options,
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    ...(options.headers || {}),
+                },
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Google Sheets gagal merespons: ${errorText}`);
+            }
+
+            return response.json();
+        };
+
+        const fetchSheetEditorValues = async (config) => {
+            const range = `${quoteSheetName(config.sheetName)}!${config.range}`;
+            const data = await getSheetsApiJson(`values/${encodeURIComponent(range)}?majorDimension=ROWS`, {}, getEditorSpreadsheetId(config));
+
+            return normalizeSheetEditorValues(data.values || []);
+        };
+
+        const updateSheetEditorValues = async (config, values) => {
+            const paddedValues = createPaddedSheetValues(values);
+            const targetRange = `${quoteSheetName(config.sheetName)}!A1:${getColumnName(paddedValues[0].length)}${paddedValues.length}`;
+
+            await getSheetsApiJson(`values/${encodeURIComponent(targetRange)}?valueInputOption=USER_ENTERED`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    majorDimension: 'ROWS',
+                    values: paddedValues,
+                }),
+            }, getEditorSpreadsheetId(config));
+        };
+
+        const openSheetEditor = async (editorKey) => {
+            const editorConfig = DASHBOARD_EDITORS[editorKey];
+
+            if (!editorConfig) {
+                return;
+            }
+
+            activeSheetEditor = {
+                key: editorKey,
+                ...editorConfig,
+            };
+            sheetEditTitle.textContent = `Ubah Data ${editorConfig.label}`;
+            sheetEditMeta.textContent = `Spreadsheet: ${getEditorSpreadsheetId(editorConfig)} | Tab: ${editorConfig.sheetName}`;
+            sheetEditTableWrap.innerHTML = '<div class="p-6 text-sm font-semibold text-gray-500">Memuat tabel...</div>';
+            setSheetEditMessage('Memuat data dari Google Sheet...');
+            sheetEditAddRow.classList.toggle('hidden', Boolean(editorConfig.fields));
+            setSheetEditModalOpen(true);
+            setSheetEditBusy(true);
+
+            try {
+                const values = await fetchSheetEditorValues(editorConfig);
+                sheetEditorOriginalRowCount = values.length;
+                sheetEditorOriginalColumnCount = values[0]?.length || 2;
+                if (editorConfig.fields) {
+                    renderSheetFieldEditor(values, editorConfig);
+                } else {
+                    renderSheetEditorTable(values);
+                }
+                setSheetEditMessage('Data siap diubah.', 'success');
+            } catch (error) {
+                sheetEditTableWrap.innerHTML = '<div class="p-6 text-sm font-semibold text-gray-500">Tabel belum dapat ditampilkan.</div>';
+                setSheetEditMessage(error.message, 'error');
+            } finally {
+                setSheetEditBusy(false);
+            }
+        };
+
+        const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+
+        const normalizeHeader = (value) => String(value ?? '')
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-z0-9]+/g, '');
+
+        const getCellText = (cell) => {
+            if (cell === null || cell === undefined) {
+                return '';
+            }
+
+            if (typeof cell === 'object') {
+                return String(cell.formatted ?? cell.value ?? '').trim();
+            }
+
+            return String(cell).trim();
+        };
+
+        const parseLocaleNumber = (input) => {
+            if (input === null || input === undefined) {
+                return 0;
+            }
+
+            if (typeof input === 'number') {
+                return Number.isFinite(input) ? input : 0;
+            }
+
+            if (typeof input === 'object') {
+                if (typeof input.value === 'number') {
+                    return Number.isFinite(input.value) ? input.value : 0;
+                }
+
+                return parseLocaleNumber(input.formatted ?? input.value);
+            }
+
+            const text = String(input).trim();
+
+            if (!text || text === '-') {
+                return 0;
+            }
+
+            const cleaned = text
+                .replace(/%/g, '')
+                .replace(/[^\d,.-]/g, '');
+
+            if (!cleaned || cleaned === '-') {
+                return 0;
+            }
+
+            const lastComma = cleaned.lastIndexOf(',');
+            const lastDot = cleaned.lastIndexOf('.');
+            let normalized = cleaned;
+
+            if (lastComma > -1 && lastDot > -1) {
+                normalized = lastComma > lastDot
+                    ? cleaned.replace(/\./g, '').replace(',', '.')
+                    : cleaned.replace(/,/g, '');
+            } else if (lastComma > -1) {
+                const decimalLength = cleaned.length - lastComma - 1;
+                normalized = decimalLength > 0 && decimalLength <= 2
+                    ? cleaned.replace(',', '.')
+                    : cleaned.replace(/,/g, '');
+            } else if (lastDot > -1) {
+                const parts = cleaned.split('.');
+                normalized = parts.length > 2 || parts[parts.length - 1].length === 3
+                    ? cleaned.replace(/\./g, '')
+                    : cleaned;
+            }
+
+            const parsed = Number.parseFloat(normalized);
+            return Number.isFinite(parsed) ? parsed : 0;
+        };
+
+        const parsePercentCell = (cell) => {
+            const text = getCellText(cell);
+
+            if (text.includes('%')) {
+                return parseLocaleNumber(text);
+            }
+
+            const value = parseLocaleNumber(cell);
+            return value > 0 && value <= 1 ? value * 100 : value;
+        };
+
+        const formatPercent = (value, maximumFractionDigits = 0) => `${new Intl.NumberFormat('id-ID', {
+            maximumFractionDigits,
+        }).format(value)}%`;
+
+        const formatMoney = (value) => moneyFormatter.format(value);
+        const formatRupiah = (value) => `Rp ${formatMoney(value)}`;
+
+        const getField = (row, aliases) => {
+            for (const alias of aliases) {
+                const key = normalizeHeader(alias);
+
+                if (row[key] !== undefined && getCellText(row[key]) !== '') {
+                    return row[key];
+                }
+            }
+
+            return null;
+        };
+
+        const normalizeSheetRows = (table) => {
+            const headers = table.cols.map((column, index) => {
+                const label = column.label || column.id || `kolom${index + 1}`;
+                return normalizeHeader(label) || `kolom${index + 1}`;
+            });
+
+            return table.rows
+                .map((row) => {
+                    const record = {};
+
+                    row.c.forEach((cell, index) => {
+                        const key = headers[index] || `kolom${index + 1}`;
+                        record[key] = {
+                            value: cell?.v ?? '',
+                            formatted: cell?.f ?? cell?.v ?? '',
+                        };
+                    });
+
+                    return record;
+                })
+                .filter((row) => Object.values(row).some((cell) => getCellText(cell) !== ''));
+        };
+
+        const loadGoogleSheet = (sheetName) => new Promise((resolve, reject) => {
+            const callbackName = `sidotiSheet_${normalizeHeader(sheetName)}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+            const script = document.createElement('script');
+            let settled = false;
+
+            const cleanup = () => {
+                delete window[callbackName];
+                script.remove();
+            };
+
+            const timeout = window.setTimeout(() => {
+                if (settled) {
+                    return;
+                }
+
+                settled = true;
+                cleanup();
+                reject(new Error(`Sheet "${sheetName}" tidak merespons. Pastikan akses berbagi sudah aktif.`));
+            }, 12000);
+
+            window[callbackName] = (response) => {
+                if (settled) {
+                    return;
+                }
+
+                settled = true;
+                window.clearTimeout(timeout);
+                cleanup();
+
+                if (!response || response.status === 'error') {
+                    const errorMessage = response?.errors?.[0]?.detailed_message
+                        || response?.errors?.[0]?.message
+                        || `Sheet "${sheetName}" tidak dapat dimuat.`;
+                    reject(new Error(errorMessage));
+                    return;
+                }
+
+                resolve(normalizeSheetRows(response.table));
+            };
+
+            script.onerror = () => {
+                if (settled) {
+                    return;
+                }
+
+                settled = true;
+                window.clearTimeout(timeout);
+                cleanup();
+                reject(new Error(`Gagal memuat sheet "${sheetName}".`));
+            };
+
+            script.src = `https://docs.google.com/spreadsheets/d/${DASHBOARD_SPREADSHEET_ID}/gviz/tq?sheet=${encodeURIComponent(sheetName)}&headers=1&tqx=out:json;responseHandler:${callbackName}&cacheBust=${Date.now()}`;
+            document.head.appendChild(script);
+        });
+
+        const loadFirstAvailableGoogleSheet = async (sheetNames) => {
+            const names = Array.isArray(sheetNames) ? sheetNames : [sheetNames];
+            let lastError = null;
+
+            for (const sheetName of names) {
+                try {
+                    return await loadGoogleSheet(sheetName);
+                } catch (error) {
+                    lastError = error;
+                }
+            }
+
+            throw lastError || new Error('Sheet tidak dapat dimuat.');
+        };
+
+        const renderGauge = (gaugeElement, valueElement, value) => {
+            const safeValue = clamp(Number.isFinite(value) ? value : 0, 0, 100);
+            const needle = gaugeElement.querySelector('.speedometer-needle');
+            const angle = -90 + safeValue * 1.8;
+
+            needle.style.transform = `translateX(-50%) rotate(${angle}deg)`;
+            valueElement.textContent = formatPercent(safeValue, safeValue % 1 ? 1 : 0);
+        };
+
+        const renderCapaian = (rows) => {
+            const row = rows[0] || {};
+            const financialValue = parsePercentCell(getField(row, ['Capaian Keuangan', 'Realisasi Keuangan']));
+            const physicalValue = parsePercentCell(getField(row, ['Capaian Fisik', 'Realisasi Fisik']));
+
+            renderGauge(financialGauge, financialGaugeValue, financialValue);
+            renderGauge(physicalGauge, physicalGaugeValue, physicalValue);
+            setChartStatus(capaianStatus, 'Sheet capaian', 'success');
+        };
+
+        const calculateProgress = (realization, target, realizationCell) => {
+            if (target > 0) {
+                return (realization / target) * 100;
+            }
+
+            return parsePercentCell(realizationCell);
+        };
+
+        const renderProgramBar = (value, type) => {
+            const safeValue = Number.isFinite(value) ? Math.max(value, 0) : 0;
+
+            if (safeValue <= 0) {
+                return `
+                    <div class="program-track">
+                        <span class="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-400">-</span>
+                    </div>
+                `;
+            }
+
+            const width = clamp(safeValue, 1.5, 100);
+            const isSmall = width < 13;
+
+            return `
+                <div class="program-track">
+                    <div class="program-bar program-bar-${type} ${isSmall ? 'is-small' : ''}" style="width: ${width}%">
+                        <span class="program-value">${formatPercent(safeValue, 2)}</span>
+                    </div>
+                </div>
+            `;
+        };
+
+        const renderProgramChart = (rows) => {
+            const data = rows
+                .map((row) => {
+                    const programCell = getField(row, ['Program']);
+                    const targetFinanceCell = getField(row, ['Target Keuangan']);
+                    const targetPhysicalCell = getField(row, ['Target Fisik']);
+                    const realizationFinanceCell = getField(row, ['Realisasi Keuangan']);
+                    const realizationPhysicalCell = getField(row, ['Realisasi Fisik']);
+                    const targetFinance = parseLocaleNumber(targetFinanceCell);
+                    const targetPhysical = parseLocaleNumber(targetPhysicalCell);
+                    const realizationFinance = parseLocaleNumber(realizationFinanceCell);
+                    const realizationPhysical = parseLocaleNumber(realizationPhysicalCell);
+
+                    return {
+                        program: getCellText(programCell),
+                        financeProgress: calculateProgress(realizationFinance, targetFinance, realizationFinanceCell),
+                        physicalProgress: calculateProgress(realizationPhysical, targetPhysical, realizationPhysicalCell),
+                    };
+                })
+                .filter((item) => item.program);
+
+            if (!data.length) {
+                programChart.innerHTML = '<div class="chart-empty">Data program belum tersedia.</div>';
+                setChartStatus(programStatus, 'Kosong', 'error');
+                return;
+            }
+
+            programChart.innerHTML = `
+                <div class="program-chart">
+                    ${data.map((item) => `
+                        <div class="program-row">
+                            <div class="program-label" title="${escapeHtml(item.program)}">${escapeHtml(item.program)}</div>
+                            <div class="program-bars">
+                                ${renderProgramBar(item.financeProgress, 'finance')}
+                                ${renderProgramBar(item.physicalProgress, 'physical')}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            setChartStatus(programStatus, `${data.length} program`, 'success');
+        };
+
+        const monthAliases = [
+            ['januari', 'jan', 'JAN'],
+            ['februari', 'feb', 'FEB'],
+            ['maret', 'mar', 'MAR'],
+            ['april', 'apr', 'APR'],
+            ['mei', 'may', 'MEI'],
+            ['juni', 'jun', 'JUN'],
+            ['juli', 'jul', 'JUL'],
+            ['agustus', 'agt', 'aug', 'AUG'],
+            ['september', 'sep', 'SEP'],
+            ['oktober', 'okt', 'oct', 'OKT'],
+            ['november', 'nov', 'NOV'],
+            ['desember', 'des', 'dec', 'DES'],
+        ];
+
+        const formatMonthLabel = (cell) => {
+            const text = getCellText(cell);
+            const lowered = text.toLowerCase();
+            const match = monthAliases.find((aliases) => aliases.slice(0, -1).some((alias) => lowered.includes(alias)));
+
+            if (match) {
+                return match[match.length - 1];
+            }
+
+            return text.slice(0, 3).toUpperCase();
+        };
+
+        const getNiceStep = (value) => {
+            if (value <= 0) {
+                return 1;
+            }
+
+            const exponent = Math.floor(Math.log10(value));
+            const base = 10 ** exponent;
+            const normalized = value / base;
+            const multiplier = [1, 2, 2.5, 5, 10].find((candidate) => normalized <= candidate) || 10;
+            return multiplier * base;
+        };
+
+        const renderMonthlyChart = (rows) => {
+            const data = rows
+                .map((row) => {
+                    const monthCell = getField(row, ['Bulan']);
+                    const realizationCell = getField(row, ['Realisasi']);
+
+                    return {
+                        label: formatMonthLabel(monthCell),
+                        value: parseLocaleNumber(realizationCell),
+                    };
+                })
+                .filter((item) => item.label);
+
+            if (!data.length) {
+                monthlyChart.innerHTML = '<div class="chart-empty">Data realisasi bulanan belum tersedia.</div>';
+                setChartStatus(monthlyStatus, 'Kosong', 'error');
+                return;
+            }
+
+            const maxValue = Math.max(...data.map((item) => item.value), 1);
+            const yStep = getNiceStep((maxValue * 1.12) / 6);
+            const yMax = yStep * Math.ceil((maxValue * 1.12) / yStep);
+            const margin = { top: 40, right: 34, bottom: 44, left: 108 };
+            const height = 340;
+            const plotHeight = height - margin.top - margin.bottom;
+            const pointGap = 104;
+            const plotWidth = Math.max(620, pointGap * Math.max(data.length - 1, 1));
+            const width = margin.left + plotWidth + margin.right;
+            const plotBottom = height - margin.bottom;
+            const yToPixel = (value) => plotBottom - (value / yMax) * plotHeight;
+            const xToPixel = (index) => data.length === 1
+                ? margin.left + plotWidth / 2
+                : margin.left + (plotWidth / (data.length - 1)) * index;
+            const ticks = Array.from({ length: Math.ceil(yMax / yStep) + 1 }, (_, index) => index * yStep);
+            const points = data.map((item, index) => ({
+                ...item,
+                x: xToPixel(index),
+                y: yToPixel(item.value),
+            }));
+            const linePath = points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
+
+            monthlyChart.innerHTML = `
+                <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="Grafik realisasi bulanan" class="block">
+                    <rect x="0" y="0" width="${width}" height="${height}" fill="#fff"></rect>
+                    ${ticks.map((tick) => {
+                        const y = yToPixel(tick);
+                        return `
+                            <line x1="${margin.left}" y1="${y}" x2="${width - margin.right}" y2="${y}" stroke="#e5e7eb" stroke-width="1"></line>
+                            <text x="${margin.left - 12}" y="${y + 4}" text-anchor="end" font-size="11" fill="#374151">${escapeHtml(formatMoney(tick))}</text>
+                        `;
+                    }).join('')}
+                    <line x1="${margin.left}" y1="${margin.top}" x2="${margin.left}" y2="${plotBottom}" stroke="#d1d5db"></line>
+                    <line x1="${margin.left}" y1="${plotBottom}" x2="${width - margin.right}" y2="${plotBottom}" stroke="#d1d5db"></line>
+                    ${linePath ? `<path d="${linePath}" fill="none" stroke="#006d6f" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"></path>` : ''}
+                    ${points.map((point) => `
+                        <circle cx="${point.x}" cy="${point.y}" r="4.5" fill="#0f7f8a" stroke="#fff" stroke-width="2"></circle>
+                        <text x="${point.x}" y="${Math.max(16, point.y - 13)}" text-anchor="middle" font-size="10" font-weight="700" fill="#111827">${point.value > 0 ? escapeHtml(formatMoney(point.value)) : '-'}</text>
+                    `).join('')}
+                    ${points.map((point) => `
+                        <text x="${point.x}" y="${height - 16}" text-anchor="middle" font-size="11" font-weight="700" fill="#374151">${escapeHtml(point.label)}</text>
+                    `).join('')}
+                </svg>
+            `;
+            setChartStatus(monthlyStatus, `${data.length} bulan`, 'success');
+        };
+
+        const cardNameAliases = [
+            'Indikator',
+            'Nama Indikator',
+            'Nama',
+            'Uraian',
+            'Jenis',
+            'Item',
+            'Card',
+            'Komponen',
+            'Metrik',
+            'Indikator Kinerja',
+            'Nama Data',
+            'A',
+            'Kolom 1',
+        ];
+        const cardValueAliases = [
+            'Nilai',
+            'Value',
+            'Skor',
+            'Capaian',
+            'Hasil',
+            'Angka',
+            'Nilai Akhir',
+            'B',
+            'Kolom 2',
+        ];
+        const cardPredicateAliases = [
+            'Predikat',
+            'Kategori Predikat',
+            'Predicate',
+            'Status',
+            'Keterangan',
+            'C',
+            'Kolom 3',
+        ];
+
+        const getRowSearchText = (row) => Object.values(row)
+            .map((cell) => normalizeHeader(getCellText(cell)))
+            .join(' ');
+
+        const rowMatchesIndicator = (row, item) => {
+            const nameText = normalizeHeader(getCellText(getField(row, cardNameAliases)));
+            const searchText = nameText || getRowSearchText(row);
+
+            return item.aliases.some((alias) => {
+                const normalizedAlias = normalizeHeader(alias);
+                return searchText.includes(normalizedAlias) || normalizedAlias.includes(searchText);
+            });
+        };
+
+        const getWideCardCell = (row, item, prefix) => {
+            const aliases = item.aliases.flatMap((alias) => [
+                `${prefix} ${alias}`,
+                `${alias} ${prefix}`,
+            ]);
+
+            return getField(row, aliases);
+        };
+
+        const rowLabelMatches = (row, aliases) => {
+            const firstCell = Object.values(row)[0];
+            const labelText = normalizeHeader(
+                getCellText(getField(row, cardNameAliases)) || getCellText(firstCell),
+            );
+
+            if (!labelText) {
+                return false;
+            }
+
+            return aliases.some((alias) => labelText === normalizeHeader(alias));
+        };
+
+        const findCardMetricRow = (rows, aliases) => rows.find((row) => rowLabelMatches(row, aliases));
+
+        const formatCardValue = (cell) => {
+            const text = getCellText(cell);
+
+            if (text) {
+                return text;
+            }
+
+            const value = parseLocaleNumber(cell);
+            return value ? new Intl.NumberFormat('id-ID', {
+                maximumFractionDigits: 2,
+            }).format(value) : '-';
+        };
+
+        const getIndicatorCardData = (rows, item) => {
+            const matrixValueRow = findCardMetricRow(rows, cardValueAliases);
+            const matrixPredicateRow = findCardMetricRow(rows, cardPredicateAliases);
+            const matrixValueCell = matrixValueRow ? getField(matrixValueRow, item.aliases) : null;
+            const matrixPredicateCell = matrixPredicateRow ? getField(matrixPredicateRow, item.aliases) : null;
+
+            if (getCellText(matrixValueCell) || getCellText(matrixPredicateCell)) {
+                return {
+                    value: formatCardValue(matrixValueCell),
+                    predicate: getCellText(matrixPredicateCell) || '-',
+                    hasData: true,
+                };
+            }
+
+            const rowData = rows.find((row) => rowMatchesIndicator(row, item));
+
+            if (rowData) {
+                const valueCell = getField(rowData, cardValueAliases)
+                    || getWideCardCell(rowData, item, 'Nilai');
+                const predicateCell = getField(rowData, cardPredicateAliases)
+                    || getWideCardCell(rowData, item, 'Predikat');
+
+                return {
+                    value: formatCardValue(valueCell),
+                    predicate: getCellText(predicateCell) || '-',
+                    hasData: Boolean(getCellText(valueCell) || getCellText(predicateCell)),
+                };
+            }
+
+            const wideRow = rows.find((row) => {
+                const valueCell = getWideCardCell(row, item, 'Nilai') || getField(row, item.aliases);
+                const predicateCell = getWideCardCell(row, item, 'Predikat');
+                return getCellText(valueCell) || getCellText(predicateCell);
+            });
+            const wideValueCell = wideRow
+                ? getWideCardCell(wideRow, item, 'Nilai') || getField(wideRow, item.aliases)
+                : null;
+            const widePredicateCell = wideRow ? getWideCardCell(wideRow, item, 'Predikat') : null;
+
+            return {
+                value: formatCardValue(wideValueCell),
+                predicate: getCellText(widePredicateCell) || '-',
+                hasData: Boolean(getCellText(wideValueCell) || getCellText(widePredicateCell)),
+            };
+        };
+
+        const getIndicatorPredicateData = (rows, item) => {
+            const directRow = rows.find((row) => getCellText(getField(row, item.aliases)));
+            const directCell = directRow ? getField(directRow, item.aliases) : null;
+
+            if (getCellText(directCell)) {
+                return getCellText(directCell);
+            }
+
+            const matrixPredicateRow = findCardMetricRow(rows, cardPredicateAliases);
+            const matrixPredicateCell = matrixPredicateRow ? getField(matrixPredicateRow, item.aliases) : null;
+
+            if (getCellText(matrixPredicateCell)) {
+                return getCellText(matrixPredicateCell);
+            }
+
+            const rowData = rows.find((row) => rowMatchesIndicator(row, item));
+            const predicateCell = rowData
+                ? getField(rowData, cardPredicateAliases) || getWideCardCell(rowData, item, 'Predikat')
+                : null;
+
+            return getCellText(predicateCell);
+        };
+
+        const renderIndicatorCards = (cardRows, predicateRows = []) => {
+            const cards = DASHBOARD_CARD_ITEMS.map((item) => ({
+                ...item,
+                ...getIndicatorCardData(cardRows, item),
+            })).map((item) => {
+                const predicate = getIndicatorPredicateData(predicateRows, item);
+
+                return {
+                    ...item,
+                    predicate: predicate || item.predicate,
+                    hasData: item.hasData || Boolean(predicate),
+                };
+            });
+            const loadedCount = cards.filter((item) => item.hasData).length;
+
+            indicatorCardGrid.innerHTML = cards.map((item) => `
+                <article class="indicator-card" style="--indicator-accent: ${item.accent}; --indicator-soft: ${item.soft}; --indicator-border: ${item.border};" aria-label="${escapeHtml(item.label)}">
+                    <div class="indicator-card-head">
+                        <div>
+                            <div class="indicator-card-title">${escapeHtml(item.label)}</div>
+                            <div class="indicator-card-label">Nilai</div>
+                        </div>
+                        <span class="indicator-card-icon" aria-hidden="true">
+                            <i class="fas ${escapeHtml(item.icon)}"></i>
+                        </span>
+                    </div>
+                    <div class="indicator-card-value">${escapeHtml(item.value)}</div>
+                    <div class="indicator-card-predicate">Predikat: ${escapeHtml(item.predicate)}</div>
+                </article>
+            `).join('');
+
+            setChartStatus(
+                indicatorCardStatus,
+                loadedCount ? `${loadedCount} indikator` : 'Kosong',
+                loadedCount ? 'success' : 'error',
+            );
+        };
+
+        const formatOutcomePercent = (value) => formatPercent(value, Number.isInteger(value) ? 0 : 2);
+
+        const getOutcomeAverage = (items, field) => {
+            if (!items.length) {
+                return 0;
+            }
+
+            return items.reduce((total, item) => total + item[field], 0) / items.length;
+        };
+
+        const updateOutcomeToggleButton = (detailKey, isVisible, detailCount) => {
+            const button = outcomeToggleButtons[detailKey];
+
+            if (!button) {
+                return;
+            }
+
+            const hasDetails = detailCount > 0;
+            const icon = button.querySelector('i');
+            const label = button.querySelector('span');
+
+            button.disabled = !hasDetails;
+            button.setAttribute('aria-expanded', String(hasDetails && isVisible));
+            button.setAttribute('aria-label', `${isVisible ? 'Sembunyikan' : 'Tampilkan'} detail bar indikator`);
+            icon?.classList.toggle('fa-list-ul', !isVisible);
+            icon?.classList.toggle('fa-eye-slash', isVisible);
+
+            if (label) {
+                label.textContent = isVisible ? 'Sembunyikan Detail Bar' : 'Tampilkan Detail Bar';
+            }
+        };
+
+        const setOutcomeDetailsVisible = (detailKey, isVisible) => {
+            outcomeDetailStates[detailKey] = isVisible;
+
+            const detailsElement = document.querySelector(`[data-outcome-details="${detailKey}"]`);
+            const detailCount = Number(detailsElement?.dataset.detailCount || 0);
+
+            if (detailsElement) {
+                detailsElement.hidden = !isVisible;
+            }
+
+            updateOutcomeToggleButton(detailKey, isVisible, detailCount);
+        };
+
+        const resetOutcomeDetails = (detailKey) => {
+            outcomeDetailStates[detailKey] = false;
+            updateOutcomeToggleButton(detailKey, false, 0);
+        };
+
+        const renderOutcomeBarLine = (label, value, scaleMax, type) => {
+            const safeValue = Number.isFinite(value) ? Math.max(value, 0) : 0;
+            const width = safeValue > 0 ? clamp((safeValue / scaleMax) * 100, 1.5, 100) : 0;
+
+            return `
+                <div class="outcome-bar-line">
+                    <div class="outcome-bar-label">${escapeHtml(label)}</div>
+                    <div class="outcome-track">
+                        ${safeValue > 0 ? `<div class="outcome-bar outcome-bar-${type}" style="width: ${width}%"></div>` : ''}
+                    </div>
+                    <div class="outcome-value">${safeValue > 0 ? escapeHtml(formatOutcomePercent(safeValue)) : '-'}</div>
+                </div>
+            `;
+        };
+
+        const renderOutcomeChart = (rows, config) => {
+            const data = rows
+                .map((row) => {
+                    const titleCell = getField(row, [config.titleField]);
+                    const sasaranCell = getField(row, ['Sasaran']);
+                    const indikatorCell = getField(row, ['Indikator']);
+                    const targetCell = getField(row, ['Target']);
+                    const capaianCell = getField(row, ['Capaian']);
+                    const paguCell = getField(row, ['Pagu']);
+                    const realizationCell = getField(row, ['Realisasi']);
+
+                    return {
+                        title: getCellText(titleCell),
+                        sasaran: getCellText(sasaranCell),
+                        indikator: getCellText(indikatorCell),
+                        target: parsePercentCell(targetCell),
+                        capaian: parsePercentCell(capaianCell),
+                        pagu: parseLocaleNumber(paguCell),
+                        realization: parseLocaleNumber(realizationCell),
+                    };
+                })
+                .filter((item) => item.title || item.sasaran || item.indikator);
+
+            if (!data.length) {
+                config.chartElement.innerHTML = `<div class="chart-empty">${escapeHtml(config.emptyMessage)}</div>`;
+                setChartStatus(config.statusElement, 'Kosong', 'error');
+                resetOutcomeDetails(config.detailKey);
+                return;
+            }
+
+            const averageTarget = getOutcomeAverage(data, 'target');
+            const averageCapaian = getOutcomeAverage(data, 'capaian');
+            const scaleMax = Math.max(100, averageTarget, averageCapaian, ...data.flatMap((item) => [item.target, item.capaian]), 1);
+            outcomeDetailStates[config.detailKey] = false;
+
+            config.chartElement.innerHTML = `
+                <div class="outcome-chart">
+                    <div class="outcome-summary">
+                        <div class="outcome-summary-head">
+                            <div class="outcome-summary-title">Rata-rata Indikator</div>
+                            <span class="outcome-summary-count">${escapeHtml(String(data.length))} ${escapeHtml(config.unitLabel)}</span>
+                        </div>
+                        <div class="outcome-bars">
+                            ${renderOutcomeBarLine('Target', averageTarget, scaleMax, 'target')}
+                            ${renderOutcomeBarLine('Capaian', averageCapaian, scaleMax, 'achievement')}
+                        </div>
+                    </div>
+                    <div class="outcome-details" data-outcome-details="${escapeHtml(config.detailKey)}" data-detail-count="${data.length}" hidden>
+                        ${data.map((item) => {
+                            const title = item.title || '-';
+                            const sasaran = item.sasaran || '-';
+                            const indikator = item.indikator || '-';
+
+                            return `
+                                <div class="outcome-row">
+                                    <div class="outcome-meta">
+                                        <div>
+                                            <div class="outcome-kicker">${escapeHtml(config.titleLabel)}</div>
+                                            <div class="outcome-title" title="${escapeHtml(title)}">${escapeHtml(title)}</div>
+                                        </div>
+                                        <div class="outcome-detail"><strong>Sasaran:</strong> ${escapeHtml(sasaran)}</div>
+                                        <div class="outcome-detail"><strong>Indikator:</strong> ${escapeHtml(indikator)}</div>
+                                        <div class="outcome-money">
+                                            <span>Pagu: ${escapeHtml(formatRupiah(item.pagu))}</span>
+                                            <span>Realisasi: ${escapeHtml(formatRupiah(item.realization))}</span>
+                                        </div>
+                                    </div>
+                                    <div class="outcome-bars">
+                                        ${renderOutcomeBarLine('Target', item.target, scaleMax, 'target')}
+                                        ${renderOutcomeBarLine('Capaian', item.capaian, scaleMax, 'achievement')}
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+            updateOutcomeToggleButton(config.detailKey, false, data.length);
+            setChartStatus(config.statusElement, `${data.length} ${config.unitLabel}`, 'success');
+        };
+
+        const getSafeExternalUrl = (value) => {
+            const url = getCellText(value);
+
+            if (!url || !/^https?:\/\//i.test(url)) {
+                return '';
+            }
+
+            return url;
+        };
+
+        const getGoogleDriveFileId = (url) => {
+            if (!url) {
+                return '';
+            }
+
+            const filePathMatch = url.match(/\/file\/d\/([^/?#]+)/);
+
+            if (filePathMatch) {
+                return filePathMatch[1];
+            }
+
+            const idMatch = url.match(/[?&]id=([^&#]+)/);
+            return idMatch ? idMatch[1] : '';
+        };
+
+        const createNewsImageUrl = (url) => {
+            const safeUrl = getSafeExternalUrl(url);
+            const driveFileId = getGoogleDriveFileId(safeUrl);
+
+            return driveFileId
+                ? `https://drive.google.com/thumbnail?id=${encodeURIComponent(driveFileId)}&sz=w800`
+                : safeUrl;
+        };
+
+        const createDownloadUrl = (url) => {
+            const safeUrl = getSafeExternalUrl(url);
+            const driveFileId = getGoogleDriveFileId(safeUrl);
+
+            return driveFileId
+                ? `https://drive.google.com/uc?export=download&id=${encodeURIComponent(driveFileId)}`
+                : safeUrl;
+        };
+
+        const createDrivePreviewUrl = (url) => {
+            const safeUrl = getSafeExternalUrl(url);
+            const driveFileId = getGoogleDriveFileId(safeUrl);
+
+            return driveFileId
+                ? `https://drive.google.com/file/d/${encodeURIComponent(driveFileId)}/preview`
+                : safeUrl;
+        };
+
+        const defaultRecentDocuments = [
+            {
+                id: 'default-rka-2026',
+                name: 'RKA 2026 DPMD.pdf',
+                url: 'https://drive.google.com/file/d/1anOU8ygqWAexNk-uFTBy4qfC6YN-chAB/view?usp=drive_link',
+                category: 'Penganggaran',
+                year: '2026',
+                mimeType: 'application/pdf',
+                uploadedAt: '2026-01-01T00:00:00.000Z',
+            },
+        ];
+
+        const getRecentDocumentYear = (documentData) => {
+            if (documentData.year) {
+                return documentData.year;
+            }
+
+            if (/^\d{4}$/.test(String(documentData.subCategory || ''))) {
+                return documentData.subCategory;
+            }
+
+            const uploadedAt = new Date(documentData.uploadedAt || documentData.createdTime || '');
+            return Number.isNaN(uploadedAt.getTime()) ? '-' : String(uploadedAt.getFullYear());
+        };
+
+        const getRecentDocumentIcon = (documentData) => {
+            const mimeType = String(documentData.mimeType || '').toLowerCase();
+            const name = String(documentData.name || '').toLowerCase();
+
+            if (mimeType.includes('pdf') || name.endsWith('.pdf')) {
+                return '<i class="far fa-file-pdf text-red-500 text-xl mr-3" aria-hidden="true"></i>';
+            }
+
+            if (mimeType.includes('spreadsheet') || /\.(xls|xlsx|csv)$/i.test(name)) {
+                return '<i class="far fa-file-excel text-green-600 text-xl mr-3" aria-hidden="true"></i>';
+            }
+
+            if (mimeType.includes('document') || /\.(doc|docx)$/i.test(name)) {
+                return '<i class="far fa-file-word text-blue-600 text-xl mr-3" aria-hidden="true"></i>';
+            }
+
+            return '<i class="far fa-file-alt text-slate-500 text-xl mr-3" aria-hidden="true"></i>';
+        };
+
+        const isCurrentUserGuest = () => normalizeHeader(window.sidotiAuth?.user?.role) === 'tamu';
+
+        const isRestrictedRecentDocument = (documentData) => {
+            const nameKey = normalizeHeader(documentData.name);
+            const subCategoryKey = normalizeHeader(documentData.subCategory);
+
+            return subCategoryKey === 'rka2026'
+                || subCategoryKey === 'dpa'
+                || nameKey.startsWith('rka2026')
+                || nameKey.startsWith('dpa');
+        };
+
+        const getRecentDocuments = () => {
+            const uploadedDocuments = getUploadedArchiveDocuments().map((documentData) => ({
+                ...documentData,
+                sortTime: Date.parse(documentData.uploadedAt || documentData.createdTime || '') || 0,
+            }));
+            const defaultDocuments = defaultRecentDocuments.map((documentData) => ({
+                ...documentData,
+                sortTime: Date.parse(documentData.uploadedAt || '') || 0,
+            }));
+
+            return [...uploadedDocuments, ...defaultDocuments]
+                .filter((documentData, index, documents) => (
+                    documentData.url
+                    && !(isCurrentUserGuest() && isRestrictedRecentDocument(documentData))
+                    && documents.findIndex((item) => (item.id || item.url) === (documentData.id || documentData.url)) === index
+                ))
+                .sort((first, second) => second.sortTime - first.sortTime);
+        };
+
+        const renderRecentDocumentsTable = () => {
+            const tableBody = recentDocumentsTable?.querySelector('tbody');
+
+            if (!tableBody) {
+                return;
+            }
+
+            const documents = getRecentDocuments();
+
+            if (!documents.length) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="px-6 py-6 text-center text-sm font-semibold text-gray-500">Belum ada dokumen terbaru.</td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tableBody.innerHTML = documents.map((documentData) => {
+                const isLatest = documentData.id === latestUploadedDocumentId;
+                const documentName = documentData.name || 'Dokumen tanpa nama';
+                const categoryLabel = documentData.subCategory
+                    ? `${documentData.category || 'Arsip'} - ${documentData.subCategory}`
+                    : (documentData.category || 'Arsip');
+
+                return `
+                    <tr class="hover:bg-gray-50 transition ${isLatest ? 'bg-green-50' : ''}" data-file-url="${escapeHtml(documentData.url)}">
+                        <td class="px-6 py-4">
+                            <div class="flex min-w-0 items-center">
+                                ${getRecentDocumentIcon(documentData)}
+                                <span class="min-w-0 truncate font-medium text-gray-800" title="${escapeHtml(documentName)}">${escapeHtml(documentName)}</span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="inline-flex max-w-[220px] items-center rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
+                                <span class="truncate" title="${escapeHtml(categoryLabel)}">${escapeHtml(categoryLabel)}</span>
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-gray-600">${escapeHtml(getRecentDocumentYear(documentData))}</td>
+                        <td class="px-6 py-4 text-blue-600">
+                            <button type="button" class="recent-doc-action mr-3" data-document-action="preview" aria-label="Preview ${escapeHtml(documentName)}" title="Preview">
+                                <i class="fas fa-eye" aria-hidden="true"></i>
+                            </button>
+                            <button type="button" class="recent-doc-action" data-document-action="download" aria-label="Download ${escapeHtml(documentName)}" title="Download">
+                                <i class="fas fa-download" aria-hidden="true"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        };
+
+        window.addEventListener('sidoti:auth-change', () => {
+            renderRecentDocumentsTable();
+        });
+
+        const openDocumentUrl = (url) => {
+            const openedWindow = window.open(url, '_blank', 'noopener,noreferrer');
+
+            if (!openedWindow) {
+                window.location.href = url;
+            }
+        };
+
+        const getRecentDocumentFileUrl = (trigger) => getSafeExternalUrl(
+            trigger.dataset.fileUrl || trigger.closest('[data-file-url]')?.dataset.fileUrl || '',
+        );
+
+        const handleRecentDocumentAction = (event) => {
+            const actionButton = event.target.closest('[data-document-action]');
+
+            if (!actionButton) {
+                return;
+            }
+
+            const fileUrl = getRecentDocumentFileUrl(actionButton);
+
+            if (!fileUrl) {
+                window.alert('File PDF belum tersedia.');
+                return;
+            }
+
+            const targetUrl = actionButton.dataset.documentAction === 'download'
+                ? createDownloadUrl(fileUrl)
+                : createDrivePreviewUrl(fileUrl);
+
+            openDocumentUrl(targetUrl);
+        };
+
+        const parseNewsDateValue = (dateText) => {
+            const text = getCellText(dateText);
+            const slashMatch = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+
+            if (slashMatch) {
+                return new Date(Number(slashMatch[3]), Number(slashMatch[2]) - 1, Number(slashMatch[1])).getTime();
+            }
+
+            const isoValue = Date.parse(text);
+            return Number.isNaN(isoValue) ? 0 : isoValue;
+        };
+
+        const isPublicNewsStatus = (status) => {
+            const normalized = normalizeHeader(status);
+            return !normalized || ['tampil', 'publish', 'published', 'publik', 'aktif'].includes(normalized);
+        };
+
+        const getNewsIdSortValue = (id) => {
+            const value = Number.parseFloat(id);
+            return Number.isFinite(value) ? value : 0;
+        };
+
+        const getNewsRows = (rows) => rows
+            .map((row, index) => {
+                const title = getCellText(getField(row, ['Judul Berita', 'Judul', 'Title']));
+                const date = getCellText(getField(row, ['Tanggal', 'Date', 'Tanggal Berita']));
+                const body = getCellText(getField(row, ['Isi Berita', 'Isi', 'Konten', 'Deskripsi', 'Ringkasan']));
+                const imageUrl = getSafeExternalUrl(getField(row, ['Gambar', 'Image', 'Foto', 'Thumbnail']));
+                const readUrl = getSafeExternalUrl(getField(row, ['Link', 'URL', 'Url Berita', 'Baca Selengkapnya']));
+                const fileUrl = getSafeExternalUrl(getField(row, ['file_url', 'File URL', 'File Url', 'Download URL', 'Link Download', 'Unduh', 'Dokumen']));
+                const status = getCellText(getField(row, ['Status', 'status', 'Publikasi']));
+
+                return {
+                    id: getCellText(getField(row, ['id', 'ID'])) || String(index + 1),
+                    title,
+                    date,
+                    body,
+                    imageUrl: createNewsImageUrl(imageUrl),
+                    readUrl,
+                    fileUrl: createDownloadUrl(fileUrl),
+                    status,
+                    sortDate: parseNewsDateValue(date),
+                };
+            })
+            .filter((item) => (item.title || item.body || item.imageUrl) && isPublicNewsStatus(item.status))
+            .sort((first, second) => second.sortDate - first.sortDate || getNewsIdSortValue(second.id) - getNewsIdSortValue(first.id));
+
+        const renderBeritaLoading = () => {
+            beritaGrid.innerHTML = '<div class="news-state">Memuat berita...</div>';
+        };
+
+        const renderBeritaEmpty = () => {
+            beritaGrid.innerHTML = '<div class="news-state">Belum ada berita yang tersedia.</div>';
+            setChartStatus(beritaStatus, 'Kosong', 'error');
+        };
+
+        const renderBeritaError = () => {
+            beritaGrid.innerHTML = '<div class="news-state">Berita gagal dimuat. Silakan coba lagi.</div>';
+            setChartStatus(beritaStatus, 'Gagal', 'error');
+        };
+
+        const bindBeritaCardEvents = () => {
+            beritaGrid.querySelectorAll('img[data-news-image]').forEach((image) => {
+                image.addEventListener('error', () => {
+                    image.remove();
+                });
+            });
+
+            beritaGrid.querySelectorAll('[data-news-toggle]').forEach((button) => {
+                button.addEventListener('click', () => {
+                    const card = button.closest('.news-card');
+                    const isExpanded = card?.classList.toggle('is-expanded') || false;
+
+                    button.setAttribute('aria-expanded', String(isExpanded));
+                    button.innerHTML = isExpanded
+                        ? '<i class="fas fa-chevron-up text-[10px]"></i> Tutup'
+                        : '<i class="fas fa-arrow-right text-[10px]"></i> Baca Selengkapnya';
+                });
+            });
+        };
+
+        const renderBeritaCards = (rows) => {
+            const newsItems = getNewsRows(rows);
+
+            if (!newsItems.length) {
+                renderBeritaEmpty();
+                return;
+            }
+
+            beritaGrid.innerHTML = newsItems.map((item) => `
+                <article class="news-card" data-news-id="${escapeHtml(item.id)}">
+                    <div class="news-card-media">
+                        <div class="news-card-fallback">
+                            <i class="fas fa-image"></i>
+                            <span>Gambar tidak tersedia</span>
+                        </div>
+                        ${item.imageUrl ? `<img src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.title || 'Gambar berita')}" loading="lazy" data-news-image>` : ''}
+                    </div>
+                    <div class="news-card-body">
+                        <div class="news-card-meta">
+                            <span class="news-card-category">Diseminasi</span>
+                            ${item.date ? `<span class="news-card-date">${escapeHtml(item.date)}</span>` : ''}
+                        </div>
+                        <h3 class="news-card-title">${escapeHtml(item.title || 'Tanpa Judul')}</h3>
+                        <p class="news-card-excerpt">${escapeHtml(item.body || 'Informasi berita belum tersedia.')}</p>
+                        <div class="news-card-actions">
+                            ${item.readUrl
+                                ? `<a href="${escapeHtml(item.readUrl)}" target="_blank" rel="noopener noreferrer" class="news-card-action"><i class="fas fa-arrow-up-right-from-square text-[10px]"></i> Baca Selengkapnya</a>`
+                                : '<button type="button" class="news-card-action" data-news-toggle aria-expanded="false"><i class="fas fa-arrow-right text-[10px]"></i> Baca Selengkapnya</button>'}
+                            ${item.fileUrl ? `<a href="${escapeHtml(item.fileUrl)}" target="_blank" rel="noopener noreferrer" class="news-card-action news-card-action-download"><i class="fas fa-download text-[10px]"></i> Download</a>` : ''}
+                        </div>
+                    </div>
+                </article>
+            `).join('');
+
+            bindBeritaCardEvents();
+            setChartStatus(beritaStatus, `${newsItems.length} berita`, 'success');
+        };
+
+        const showChartError = (element, statusElement, message) => {
+            element.innerHTML = `<div class="chart-empty">${escapeHtml(message)}</div>`;
+            setChartStatus(statusElement, 'Gagal', 'error');
+        };
+
+        const loadDashboardData = async () => {
+            setChartStatus(capaianStatus, 'Memuat', 'loading');
+            setChartStatus(programStatus, 'Memuat', 'loading');
+            setChartStatus(monthlyStatus, 'Memuat', 'loading');
+            setChartStatus(indicatorCardStatus, 'Memuat', 'loading');
+            setChartStatus(immediateOutputStatus, 'Memuat', 'loading');
+            setChartStatus(intermediateOutcomeStatus, 'Memuat', 'loading');
+            setChartStatus(ultimateOutcomeStatus, 'Memuat', 'loading');
+            setChartStatus(beritaStatus, 'Memuat', 'loading');
+            resetOutcomeDetails('immediate');
+            resetOutcomeDetails('intermediate');
+            resetOutcomeDetails('ultimate');
+            renderBeritaLoading();
+
+            const [capaianResult, programResult, monthlyResult, cardResult, predicateResult, outputResult, outcomeResult, impactResult, beritaResult] = await Promise.allSettled([
+                loadGoogleSheet(DASHBOARD_SHEETS.capaian),
+                loadGoogleSheet(DASHBOARD_SHEETS.realisasi),
+                loadGoogleSheet(DASHBOARD_SHEETS.bulanan),
+                loadGoogleSheet(DASHBOARD_SHEETS.card),
+                loadGoogleSheet(DASHBOARD_SHEETS.predikat),
+                loadGoogleSheet(DASHBOARD_SHEETS.output),
+                loadGoogleSheet(DASHBOARD_SHEETS.outcome),
+                loadGoogleSheet(DASHBOARD_SHEETS.impact),
+                loadFirstAvailableGoogleSheet(DASHBOARD_SHEETS.berita),
+            ]);
+
+            if (capaianResult.status === 'fulfilled') {
+                renderCapaian(capaianResult.value);
+            } else {
+                renderGauge(financialGauge, financialGaugeValue, 0);
+                renderGauge(physicalGauge, physicalGaugeValue, 0);
+                setChartStatus(capaianStatus, 'Gagal', 'error');
+            }
+
+            if (programResult.status === 'fulfilled') {
+                renderProgramChart(programResult.value);
+            } else {
+                showChartError(programChart, programStatus, 'Data realisasi program tidak dapat dimuat. Pastikan sheet realisasi dapat diakses publik.');
+            }
+
+            if (monthlyResult.status === 'fulfilled') {
+                renderMonthlyChart(monthlyResult.value);
+            } else {
+                showChartError(monthlyChart, monthlyStatus, 'Data realisasi bulanan tidak dapat dimuat. Pastikan sheet bulanan dapat diakses publik.');
+            }
+
+            if (cardResult.status === 'fulfilled' || predicateResult.status === 'fulfilled') {
+                renderIndicatorCards(
+                    cardResult.status === 'fulfilled' ? cardResult.value : [],
+                    predicateResult.status === 'fulfilled' ? predicateResult.value : [],
+                );
+            } else {
+                showChartError(indicatorCardGrid, indicatorCardStatus, 'Data card dan predikat tidak dapat dimuat. Pastikan sheet card dan predikat dapat diakses publik.');
+            }
+
+            if (outputResult.status === 'fulfilled') {
+                renderOutcomeChart(outputResult.value, {
+                    chartElement: immediateOutputChart,
+                    statusElement: immediateOutputStatus,
+                    titleField: 'Kegiatan',
+                    titleLabel: 'Kegiatan',
+                    unitLabel: 'kegiatan',
+                    detailKey: 'immediate',
+                    emptyMessage: 'Data immediate output belum tersedia.',
+                });
+            } else {
+                showChartError(immediateOutputChart, immediateOutputStatus, 'Data immediate output tidak dapat dimuat. Pastikan sheet output dapat diakses publik.');
+            }
+
+            if (outcomeResult.status === 'fulfilled') {
+                renderOutcomeChart(outcomeResult.value, {
+                    chartElement: intermediateOutcomeChart,
+                    statusElement: intermediateOutcomeStatus,
+                    titleField: 'Program',
+                    titleLabel: 'Program',
+                    unitLabel: 'program',
+                    detailKey: 'intermediate',
+                    emptyMessage: 'Data intermediate outcome belum tersedia.',
+                });
+            } else {
+                showChartError(intermediateOutcomeChart, intermediateOutcomeStatus, 'Data intermediate outcome tidak dapat dimuat. Pastikan sheet outcome dapat diakses publik.');
+            }
+
+            if (impactResult.status === 'fulfilled') {
+                renderOutcomeChart(impactResult.value, {
+                    chartElement: ultimateOutcomeChart,
+                    statusElement: ultimateOutcomeStatus,
+                    titleField: 'Tujuan',
+                    titleLabel: 'Tujuan',
+                    unitLabel: 'tujuan',
+                    detailKey: 'ultimate',
+                    emptyMessage: 'Data ultimate outcome belum tersedia.',
+                });
+            } else {
+                showChartError(ultimateOutcomeChart, ultimateOutcomeStatus, 'Data ultimate outcome tidak dapat dimuat. Pastikan sheet impact dapat diakses publik.');
+            }
+
+            if (beritaResult.status === 'fulfilled') {
+                renderBeritaCards(beritaResult.value);
+            } else {
+                renderBeritaError();
+            }
+        };
+
+        loadDashboardData();
+
+        const getUploadedArchiveDocuments = () => {
+            try {
+                return JSON.parse(localStorage.getItem(UPLOADED_ARCHIVE_STORAGE_KEY)) || [];
+            } catch {
+                return [];
+            }
+        };
+
+        const saveUploadedArchiveDocuments = (documents) => {
+            localStorage.setItem(UPLOADED_ARCHIVE_STORAGE_KEY, JSON.stringify(documents));
+        };
+
+        const addUploadedArchiveDocument = (documentData) => {
+            const documents = getUploadedArchiveDocuments();
+            saveUploadedArchiveDocuments([documentData, ...documents.filter((item) => item.id !== documentData.id)]);
+            latestUploadedDocumentId = documentData.id;
+        };
+
+        const getUploadedDocumentsFor = (category, subCategory) => getUploadedArchiveDocuments()
+            .filter((documentData) => documentData.category === category && documentData.subCategory === subCategory);
+
+        const renderUploadedArchiveLinks = (category, subCategory) => {
+            const documents = getUploadedDocumentsFor(category, subCategory);
+
+            if (!documents.length) {
+                return '';
+            }
+
+            return `
+                <div class="space-y-1 px-16 pb-2">
+                    ${documents.map((documentData) => {
+                        const isLatest = documentData.id === latestUploadedDocumentId;
+                        return `
+                            <a href="${escapeHtml(documentData.url)}" target="_blank" rel="noopener noreferrer" class="flex items-center rounded px-2 py-1.5 text-xs text-blue-100 hover:bg-blue-800 hover:text-white transition ${isLatest ? 'bg-green-700/70 text-white animate-pulse' : ''}" title="${escapeHtml(documentData.name)}">
+                                <i class="far fa-file-alt mr-2 text-[10px]"></i>
+                                <span class="min-w-0 truncate">${escapeHtml(documentData.name)}</span>
+                            </a>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        };
+
+        const renderArsipDropdown = () => {
+            arsipDropdown.innerHTML = arsipCategories
+                .map(({ name, items }, index) => {
+                    const categoryId = `arsipCategory${index}`;
+                    return `
+                        <div>
+                            <button type="button" class="arsipCategoryButton flex items-center justify-between w-full px-12 py-3 text-sm font-semibold text-blue-100 hover:bg-blue-800 hover:text-white transition" aria-expanded="false" aria-controls="${categoryId}" data-target="${categoryId}">
+                                <span class="flex min-w-0 items-center text-left">
+                                    <i class="fas fa-folder mr-3"></i> ${escapeHtml(name)}
+                                </span>
+                                <i class="fas fa-chevron-down text-[10px] transition"></i>
+                            </button>
+                            <div id="${categoryId}" class="hidden bg-blue-950/80">
+                                ${items.map((item) => {
+                                    const uploadedCount = getUploadedDocumentsFor(name, item).length;
+                                    return `
+                                        <div>
+                                            <button type="button" class="flex items-center justify-between w-full px-16 py-2.5 text-left text-xs text-blue-100 hover:bg-blue-800 hover:text-white transition">
+                                                <span class="flex min-w-0 items-center">
+                                                    <i class="fas fa-angle-right mr-3 text-[10px]"></i>
+                                                    <span class="min-w-0 leading-snug">${escapeHtml(item)}</span>
+                                                </span>
+                                                ${uploadedCount ? `<span class="ml-2 rounded-full bg-green-600 px-2 py-0.5 text-[10px] font-semibold text-white">${uploadedCount}</span>` : ''}
+                                            </button>
+                                            ${renderUploadedArchiveLinks(name, item)}
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+                    `;
+                })
+                .join('');
+        };
+
+        renderRecentDocumentsTable();
+        renderArsipDropdown();
+
+        const setSelectOptions = (selectElement, options) => {
+            selectElement.innerHTML = '';
+
+            options.forEach(({ label, value }) => {
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = label;
+                selectElement.appendChild(option);
+            });
+        };
+
+        const getSelectedUploadTarget = () => {
+            const category = uploadKategori.value;
+            const subCategory = uploadSubKategori.value;
+
+            return uploadFolders[category].find(({ name }) => name === subCategory);
+        };
+
+        const updateUploadInfo = () => {
+            const category = uploadKategori.value;
+            const target = getSelectedUploadTarget();
+            const fileName = uploadFile.files[0]?.name;
+
+            uploadInfo.textContent = fileName
+                ? `Dokumen "${fileName}" akan diarahkan ke folder ${target.name} pada kategori ${category}.`
+                : `Folder tujuan otomatis: ${target.name} pada kategori ${category}. Folder induk: ${uploadRootFolder.name}.`;
+        };
+
+        const populateUploadSubCategories = () => {
+            const category = uploadKategori.value;
+            const subCategories = uploadFolders[category].map(({ name }) => ({
+                label: name,
+                value: name,
+            }));
+
+            setSelectOptions(uploadSubKategori, subCategories);
+            updateUploadInfo();
+        };
+
+        const populateUploadCategories = () => {
+            const categories = Object.keys(uploadFolders).map((category) => ({
+                label: category,
+                value: category,
+            }));
+
+            setSelectOptions(uploadKategori, categories);
+            populateUploadSubCategories();
+        };
+
+        const setUploadModalOpen = (isOpen) => {
+            uploadModal.classList.toggle('hidden', !isOpen);
+            uploadModal.classList.toggle('flex', isOpen);
+        };
+
+        const setUploadBusy = (isBusy) => {
+            submitUploadButton.disabled = isBusy;
+            uploadFile.disabled = isBusy;
+            uploadKategori.disabled = isBusy;
+            uploadSubKategori.disabled = isBusy;
+        };
+
+        const isGoogleClientSecret = () => GOOGLE_CLIENT_ID.trim().startsWith('GOCSPX-');
+
+        const isGoogleClientConfigured = () => GOOGLE_CLIENT_ID.trim()
+            && !GOOGLE_CLIENT_ID.startsWith('ISI_CLIENT_ID_GOOGLE_ANDA')
+            && !isGoogleClientSecret();
+
+        const getDriveFolderId = (folderUrl) => {
+            const match = folderUrl.match(/\/folders\/([^/?]+)/);
+            return match?.[1];
+        };
+
+        const createDriveFileUrl = (fileId) => `https://drive.google.com/file/d/${fileId}/view`;
+
+        const getGoogleAccessTokenForScopes = (scopes, notConfiguredMessage) => new Promise((resolve, reject) => {
+            if (isGoogleClientSecret()) {
+                reject(new Error('Nilai GOOGLE_CLIENT_ID yang dimasukkan adalah OAuth Client Secret. Jangan pasang secret di browser. Gunakan OAuth Client ID yang formatnya biasanya berakhir dengan ".apps.googleusercontent.com".'));
+                return;
+            }
+
+            if (!isGoogleClientConfigured()) {
+                reject(new Error(notConfiguredMessage));
+                return;
+            }
+
+            if (!window.google?.accounts?.oauth2) {
+                reject(new Error('Layanan login Google belum siap. Pastikan koneksi internet aktif, lalu coba lagi.'));
+                return;
+            }
+
+            const tokenClient = window.google.accounts.oauth2.initTokenClient({
+                client_id: GOOGLE_CLIENT_ID,
+                scope: scopes,
+                callback: (response) => {
+                    if (response.error) {
+                        reject(new Error(response.error_description || response.error));
+                        return;
+                    }
+
+                    googleAccessToken = response.access_token;
+                    googleAccessTokenScopes = response.scope || scopes;
+                    resolve(response.access_token);
+                },
+            });
+            const requestedScopes = scopes.split(/\s+/).filter(Boolean);
+            const cachedScopes = googleAccessTokenScopes.split(/\s+/).filter(Boolean);
+            const hasRequestedScopes = requestedScopes.every((scope) => cachedScopes.includes(scope));
+
+            tokenClient.requestAccessToken({
+                prompt: googleAccessToken && hasRequestedScopes ? '' : 'consent',
+            });
+        });
+
+        const getGoogleAccessToken = () => getGoogleAccessTokenForScopes(
+            GOOGLE_API_SCOPES,
+            `Akses ubah data belum aktif. Spreadsheet ${CAPAIAN_SPREADSHEET_ID} sudah dipasang, tetapi GOOGLE_CLIENT_ID OAuth dari Google Cloud masih harus diisi agar browser boleh menyimpan perubahan.`,
+        );
+
+        const getGoogleSlidesAccessToken = () => getGoogleAccessTokenForScopes(
+            GOOGLE_SLIDES_SCOPE,
+            'Akses baca presentasi belum aktif. GOOGLE_CLIENT_ID OAuth dari Google Cloud harus diisi agar browser bisa membaca Google Slides.',
+        );
+
+        const createMultipartDriveBody = (metadata, file) => {
+            const boundary = `sidoti_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+            const mimeType = file.type || 'application/octet-stream';
+            const metadataPart = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n`;
+            const filePartHeader = `--${boundary}\r\nContent-Type: ${mimeType}\r\n\r\n`;
+            const closeDelimiter = `\r\n--${boundary}--`;
+
+            return {
+                boundary,
+                body: new Blob([metadataPart, filePartHeader, file, closeDelimiter], {
+                    type: `multipart/related; boundary=${boundary}`,
+                }),
+            };
+        };
+
+        const uploadFileToDrive = async (file, target) => {
+            const accessToken = await getGoogleAccessToken();
+            const folderId = getDriveFolderId(target.url);
+
+            if (!folderId) {
+                throw new Error('ID folder Google Drive tidak valid.');
+            }
+
+            const metadata = {
+                name: file.name,
+                mimeType: file.type || 'application/octet-stream',
+                parents: [folderId],
+            };
+            const { boundary, body } = createMultipartDriveBody(metadata, file);
+            const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink,mimeType,createdTime', {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    'Content-Type': `multipart/related; boundary=${boundary}`,
+                },
+                body,
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Upload ke Google Drive gagal: ${errorText}`);
+            }
+
+            return response.json();
+        };
+
+        const setArsipDropdownOpen = (isOpen) => {
+            arsipDropdown.classList.toggle('hidden', !isOpen);
+            arsipButton.setAttribute('aria-expanded', String(isOpen));
+            arsipIcon.classList.toggle('fa-chevron-down', !isOpen);
+            arsipIcon.classList.toggle('fa-chevron-up', isOpen);
+        };
+
+        const openArsipCategory = (categoryName) => {
+            const categoryIndex = arsipCategories.findIndex(({ name }) => name === categoryName);
+
+            if (categoryIndex === -1) {
+                return;
+            }
+
+            setArsipDropdownOpen(true);
+
+            const target = document.getElementById(`arsipCategory${categoryIndex}`);
+            const button = arsipDropdown.querySelector(`[data-target="arsipCategory${categoryIndex}"]`);
+            const icon = button?.querySelector('.fa-chevron-down, .fa-chevron-up');
+
+            target?.classList.remove('hidden');
+            button?.setAttribute('aria-expanded', 'true');
+            icon?.classList.remove('fa-chevron-down');
+            icon?.classList.add('fa-chevron-up');
+        };
+
+        infographicSlidesOpenLink.href = INFOGRAPHIC_PRESENTATION_VIEW_URL;
+        renderInfographicFallback();
+
+        infographicSlidesFrame.addEventListener('pointerenter', () => {
+            setInfographicSlidesControlsVisible(true);
+        });
+
+        infographicPresentationSection.addEventListener('pointerleave', () => {
+            if (!infographicSlidesControlsPinned) {
+                setInfographicSlidesControlsVisible(false);
+            }
+        });
+
+        infographicSlidesFrame.addEventListener('click', () => {
+            infographicSlidesControlsPinned = true;
+            setInfographicSlidesControlsVisible(true);
+        });
+
+        document.addEventListener('click', (event) => {
+            if (infographicPresentationSection.contains(event.target)) {
+                return;
+            }
+
+            infographicSlidesControlsPinned = false;
+            setInfographicSlidesControlsVisible(false);
+        });
+
+        infographicSlidesLoadButton.addEventListener('click', loadInfographicPresentation);
+
+        infographicSlidesPrevButton.addEventListener('click', () => {
+            setInfographicActiveSlide(activeInfographicSlideIndex - 1);
+        });
+
+        infographicSlidesNextButton.addEventListener('click', () => {
+            setInfographicActiveSlide(activeInfographicSlideIndex + 1);
+        });
+
+        infographicSlidesThumbnailList.addEventListener('click', (event) => {
+            const button = event.target.closest('[data-infographic-slide-index]');
+
+            if (!button) {
+                return;
+            }
+
+            setInfographicActiveSlide(Number(button.dataset.infographicSlideIndex));
+        });
+
+        Object.entries(outcomeToggleButtons).forEach(([detailKey, button]) => {
+            button?.addEventListener('click', () => {
+                setOutcomeDetailsVisible(detailKey, !outcomeDetailStates[detailKey]);
+            });
+        });
+
+        recentDocumentsTable?.addEventListener('click', handleRecentDocumentAction);
+
+        populateUploadCategories();
+
+        [
+            [editCapaianButton, 'capaian'],
+            [editProgramButton, 'program'],
+            [editMonthlyButton, 'monthly'],
+            [editImmediateOutputButton, 'immediateOutput'],
+            [editIntermediateOutcomeButton, 'intermediateOutcome'],
+            [editUltimateOutcomeButton, 'ultimateOutcome'],
+        ].forEach(([button, editorKey]) => {
+            button?.addEventListener('click', () => {
+                openSheetEditor(editorKey);
+            });
+        });
+
+        closeSheetEditModal.addEventListener('click', () => {
+            setSheetEditModalOpen(false);
+        });
+
+        cancelSheetEdit.addEventListener('click', () => {
+            setSheetEditModalOpen(false);
+        });
+
+        sheetEditModal.addEventListener('click', (event) => {
+            if (event.target === sheetEditModal) {
+                setSheetEditModalOpen(false);
+            }
+        });
+
+        sheetEditOpenSheet.addEventListener('click', () => {
+            window.open(createDashboardSheetUrl(), '_blank', 'noopener,noreferrer');
+        });
+
+        sheetEditRefresh.addEventListener('click', () => {
+            if (activeSheetEditor) {
+                openSheetEditor(activeSheetEditor.key);
+            }
+        });
+
+        sheetEditAddRow.addEventListener('click', () => {
+            if (activeSheetEditor?.fields) {
+                return;
+            }
+
+            const values = getCurrentSheetEditorValues();
+            const columnCount = sheetEditorHeaders.length || sheetEditorOriginalColumnCount || 2;
+
+            values.push(Array.from({ length: columnCount }, () => ''));
+            renderSheetEditorTable(values);
+            sheetEditTableWrap.querySelector('tbody tr:last-child input')?.focus();
+        });
+
+        sheetEditTableWrap.addEventListener('click', (event) => {
+            if (activeSheetEditor?.fields) {
+                return;
+            }
+
+            const deleteButton = event.target.closest('.sheet-edit-delete-row');
+
+            if (!deleteButton) {
+                return;
+            }
+
+            const row = deleteButton.closest('tr');
+            const rows = Array.from(sheetEditTableWrap.querySelectorAll('tbody tr'));
+
+            if (rows.length <= 1) {
+                row.querySelectorAll('input').forEach((input) => {
+                    input.value = '';
+                });
+                return;
+            }
+
+            row.remove();
+        });
+
+        sheetEditForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            if (!activeSheetEditor) {
+                return;
+            }
+
+            try {
+                setSheetEditBusy(true);
+                setSheetEditMessage('Menyimpan perubahan ke Google Sheet...');
+
+                if (activeSheetEditor.fields) {
+                    await updateSheetEditorFields(activeSheetEditor);
+                } else {
+                    const values = getCurrentSheetEditorValues();
+                    const savedColumnCount = Math.max(sheetEditorOriginalColumnCount, ...values.map((row) => row.length));
+                    const savedRowCount = Math.max(sheetEditorOriginalRowCount, values.length);
+
+                    await updateSheetEditorValues(activeSheetEditor, values);
+                    sheetEditorOriginalColumnCount = savedColumnCount;
+                    sheetEditorOriginalRowCount = savedRowCount;
+                }
+
+                setSheetEditMessage('Tersimpan. Memuat ulang tampilan dashboard...', 'success');
+                await loadDashboardData();
+                setSheetEditMessage('Tersimpan dan tampilan dashboard sudah diperbarui.', 'success');
+            } catch (error) {
+                setSheetEditMessage(error.message, 'error');
+            } finally {
+                setSheetEditBusy(false);
+            }
+        });
+
+        uploadButton.addEventListener('click', () => {
+            updateUploadInfo();
+            setUploadModalOpen(true);
+        });
+
+        closeUploadModal.addEventListener('click', () => {
+            setUploadModalOpen(false);
+        });
+
+        cancelUpload.addEventListener('click', () => {
+            setUploadModalOpen(false);
+        });
+
+        uploadModal.addEventListener('click', (event) => {
+            if (event.target === uploadModal) {
+                setUploadModalOpen(false);
+            }
+        });
+
+        uploadKategori.addEventListener('change', populateUploadSubCategories);
+        uploadSubKategori.addEventListener('change', updateUploadInfo);
+        uploadFile.addEventListener('change', updateUploadInfo);
+
+        uploadForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const target = getSelectedUploadTarget();
+            const file = uploadFile.files[0];
+
+            if (!file) {
+                uploadInfo.textContent = 'Pilih dokumen yang akan diupload terlebih dahulu.';
+                uploadFile.focus();
+                return;
+            }
+
+            try {
+                setUploadBusy(true);
+                uploadInfo.textContent = `Mengupload "${file.name}" ke folder ${target.name}...`;
+
+                const uploadedFile = await uploadFileToDrive(file, target);
+                const uploadedDocument = {
+                    id: uploadedFile.id,
+                    name: uploadedFile.name || file.name,
+                    url: uploadedFile.webViewLink || createDriveFileUrl(uploadedFile.id),
+                    category: uploadKategori.value,
+                    subCategory: uploadSubKategori.value,
+                    mimeType: uploadedFile.mimeType || file.type || 'application/octet-stream',
+                    createdTime: uploadedFile.createdTime || '',
+                    uploadedAt: new Date().toISOString(),
+                };
+
+                addUploadedArchiveDocument(uploadedDocument);
+                renderArsipDropdown();
+                renderRecentDocumentsTable();
+                openArsipCategory(uploadedDocument.category);
+                uploadInfo.textContent = `Berhasil upload "${uploadedDocument.name}". File sudah muncul di Dokumen Terbaru dan Arsip > ${uploadedDocument.category} > ${uploadedDocument.subCategory}.`;
+                uploadFile.value = '';
+            } catch (error) {
+                uploadInfo.textContent = error.message;
+            } finally {
+                setUploadBusy(false);
+            }
+        });
+
+        perencanaanButton.addEventListener('click', () => {
+            const isOpen = !perencanaanDropdown.classList.contains('hidden');
+
+            perencanaanDropdown.classList.toggle('hidden', isOpen);
+            perencanaanButton.setAttribute('aria-expanded', String(!isOpen));
+            perencanaanIcon.classList.toggle('fa-chevron-down', isOpen);
+            perencanaanIcon.classList.toggle('fa-chevron-up', !isOpen);
+        });
+
+        penganggaranButton.addEventListener('click', () => {
+            const isOpen = !penganggaranDropdown.classList.contains('hidden');
+
+            penganggaranDropdown.classList.toggle('hidden', isOpen);
+            penganggaranButton.setAttribute('aria-expanded', String(!isOpen));
+            penganggaranIcon.classList.toggle('fa-chevron-down', isOpen);
+            penganggaranIcon.classList.toggle('fa-chevron-up', !isOpen);
+        });
+
+        dataDukungButton.addEventListener('click', () => {
+            const isOpen = !dataDukungDropdown.classList.contains('hidden');
+
+            dataDukungDropdown.classList.toggle('hidden', isOpen);
+            dataDukungButton.setAttribute('aria-expanded', String(!isOpen));
+            dataDukungIcon.classList.toggle('fa-chevron-down', isOpen);
+            dataDukungIcon.classList.toggle('fa-chevron-up', !isOpen);
+        });
+
+        monevButton.addEventListener('click', () => {
+            const isOpen = !monevDropdown.classList.contains('hidden');
+
+            monevDropdown.classList.toggle('hidden', isOpen);
+            monevButton.setAttribute('aria-expanded', String(!isOpen));
+            monevIcon.classList.toggle('fa-chevron-down', isOpen);
+            monevIcon.classList.toggle('fa-chevron-up', !isOpen);
+        });
+
+        arsipButton.addEventListener('click', () => {
+            const isOpen = !arsipDropdown.classList.contains('hidden');
+
+            setArsipDropdownOpen(!isOpen);
+        });
+
+        arsipDropdown.addEventListener('click', (event) => {
+            const button = event.target.closest('.arsipCategoryButton');
+
+            if (!button) {
+                return;
+            }
+
+            const targetId = button.getAttribute('data-target');
+            const target = document.getElementById(targetId);
+            const icon = button.querySelector('.fa-chevron-down, .fa-chevron-up');
+
+            if (!target || !icon) {
+                return;
+            }
+
+            const isOpen = !target.classList.contains('hidden');
+
+            target.classList.toggle('hidden', isOpen);
+            button.setAttribute('aria-expanded', String(!isOpen));
+            icon.classList.toggle('fa-chevron-down', isOpen);
+            icon.classList.toggle('fa-chevron-up', !isOpen);
+        });
+    </script>
+    <script src="./app.js?v=20260516-guest-penganggaran-items"></script>
+</body>
+</html>
