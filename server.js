@@ -258,7 +258,7 @@ const sanitizeUser = (user) => ({
 const normalizeRole = (role) => {
     const normalized = normalizeText(role).replace(/[^a-z0-9]+/g, '');
 
-    if (normalized === 'superadmin' || normalized === 'superadministrator') {
+    if (normalized === 'admin' || normalized === 'superadmin' || normalized === 'superadministrator') {
         return 'super_admin';
     }
 
@@ -285,6 +285,11 @@ const mapUserRows = (values = []) => {
         }, {}));
 };
 
+const hasLoginColumns = (rows) => rows.some((row) => (
+    Boolean(row.username || row.user || row.nama_pengguna || row.email)
+    && Object.prototype.hasOwnProperty.call(row, 'password')
+));
+
 const getUsersFromSheet = async () => {
     let lastError = null;
     let sheets = null;
@@ -304,8 +309,13 @@ const getUsersFromSheet = async () => {
                     range,
                     valueRenderOption: 'FORMATTED_VALUE',
                 });
+                const users = mapUserRows(response.data.values || []);
 
-                return mapUserRows(response.data.values || []);
+                if (hasLoginColumns(users)) {
+                    return users;
+                }
+
+                throw new Error(`Sheet "${sheetName}" bukan sheet akun.`);
             } catch (error) {
                 lastError = error;
             }
@@ -315,7 +325,13 @@ const getUsersFromSheet = async () => {
     for (const sheetName of USER_SHEET_NAMES) {
         try {
             const values = await fetchPublicSheetValues(USER_SPREADSHEET_ID, sheetName);
-            return mapUserRows(values);
+            const users = mapUserRows(values);
+
+            if (hasLoginColumns(users)) {
+                return users;
+            }
+
+            throw new Error(`Sheet "${sheetName}" bukan sheet akun.`);
         } catch (error) {
             lastError = error;
         }

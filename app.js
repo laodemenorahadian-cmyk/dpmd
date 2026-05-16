@@ -38,6 +38,7 @@
 
     const normalizeRole = (role) => {
         const n = normalizeText(role);
+        if (n === 'admin') return 'super_admin';
         if (n === 'superadmin' || n === 'superadministrator') return 'super_admin';
         if (n === 'adminbidang') return 'admin_bidang';
         if (n === 'tamu' || n === 'guest') return 'tamu';
@@ -201,12 +202,28 @@
     let cachedUsers = null; // cache agar tidak fetch berulang
     let activeUserSheetName = USER_SHEET_NAMES[0];
 
+    const findCol = (row, ...aliases) => {
+        for (const a of aliases) {
+            const k = normalizeText(a);
+            if (row[k] !== undefined) return String(row[k]).trim();
+        }
+        return '';
+    };
+
+    const hasLoginColumns = (rows) => rows.some((row) => (
+        Boolean(findCol(row, 'username','user','nama_pengguna','email'))
+        && Object.prototype.hasOwnProperty.call(row, 'password')
+    ));
+
     const loadUserSheet = async () => {
         let lastError = null;
 
         for (const sheetName of USER_SHEET_NAMES) {
             try {
                 const rows = await loadSheet(USER_SPREADSHEET_ID, sheetName);
+                if (!hasLoginColumns(rows)) {
+                    throw new Error(`Sheet "${sheetName}" bukan sheet akun.`);
+                }
                 activeUserSheetName = sheetName;
                 return rows;
             } catch (error) {
@@ -232,14 +249,6 @@
         // Kolom nama      : nama / nama_lengkap / name
         // Kolom bidang    : bidang / divisi / unit
         // Kolom status    : status / aktif
-        const findCol = (row, ...aliases) => {
-            for (const a of aliases) {
-                const k = normalizeText(a);
-                if (row[k] !== undefined) return String(row[k]).trim();
-            }
-            return '';
-        };
-
         const uNorm = normalizeText(username);
 
         const match = users.find((row) => {
