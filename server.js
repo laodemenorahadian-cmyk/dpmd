@@ -424,6 +424,19 @@ const requireAuth = (request, response, next) => {
     next();
 };
 
+const optionalAuth = (request, response, next) => {
+    const session = getSession(request);
+
+    if (session) {
+        request.user = session.user;
+        request.sessionToken = session.token;
+    } else {
+        request.user = { role: 'tamu' };
+    }
+
+    next();
+};
+
 const requireRoles = (...roles) => (request, response, next) => {
     if (!roles.includes(request.user?.role)) {
         response.status(403).json({ message: 'Akses tidak diizinkan untuk role ini.' });
@@ -651,11 +664,11 @@ app.get('/api/users', requireAuth, requireRoles('super_admin'), async (request, 
     }
 });
 
-app.get('/api/documents', requireAuth, (request, response) => {
+app.get('/api/documents', optionalAuth, (request, response) => {
     sendDocuments(request, response);
 });
 
-app.get('/api/documents/search', requireAuth, (request, response) => {
+app.get('/api/documents/search', optionalAuth, (request, response) => {
     sendDocuments(request, response, request.query.q || '');
 });
 

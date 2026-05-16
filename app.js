@@ -71,6 +71,22 @@
         loginPassword.disabled = busy;
     };
 
+    const postJson = async (url, body = {}) => {
+        const resp = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify(body),
+        });
+        const data = await resp.json().catch(() => ({}));
+
+        if (!resp.ok) {
+            throw new Error(data.message || 'Permintaan gagal diproses.');
+        }
+
+        return data;
+    };
+
     // ── role controls ─────────────────────────────────────────────
     const roleCan = (control) => {
         const role = normalizeRole(currentUser?.role);
@@ -190,7 +206,7 @@
         return cachedUsers;
     };
 
-    const authenticate = async (username, password) => {
+    const authenticateFromSheet = async (username, password) => {
         const users = await getUsers();
 
         // Kolom yang dicari: username / user / nama_pengguna
@@ -227,17 +243,41 @@
         };
     };
 
+    const authenticate = async (username, password) => {
+        try {
+            const data = await postJson('/api/auth/login', { username, password });
+            return data.user;
+        } catch (serverError) {
+            return authenticateFromSheet(username, password);
+        }
+    };
+
     // ── login sebagai tamu ────────────────────────────────────────
-    const loginAsGuest = () => {
-        applyAuthenticatedUser({
-            nama:     'Tamu',
-            username: 'tamu',
-            role:     'tamu',
-            bidang:   'SEMUA',
-        });
-        loginUsername.value = '';
-        loginPassword.value = '';
-        setLoginMessage('', 'success');
+    const loginAsGuest = async () => {
+        setLoginBusy(true);
+        setLoginMessage('Memuat akses tamu...', 'success');
+
+        try {
+            const data = await postJson('/api/auth/guest');
+            applyAuthenticatedUser(data.user || {
+                nama:     'Tamu',
+                username: 'tamu',
+                role:     'tamu',
+                bidang:   'SEMUA',
+            });
+        } catch (error) {
+            applyAuthenticatedUser({
+                nama:     'Tamu',
+                username: 'tamu',
+                role:     'tamu',
+                bidang:   'SEMUA',
+            });
+        } finally {
+            loginUsername.value = '';
+            loginPassword.value = '';
+            setLoginMessage('', 'success');
+            setLoginBusy(false);
+        }
     };
 
     // ── form submit ───────────────────────────────────────────────
@@ -249,7 +289,7 @@
 
         // Shortcut tamu tanpa password
         if (normalizeText(username) === 'tamu' && !password) {
-            loginAsGuest();
+            await loginAsGuest();
             return;
         }
 
@@ -280,9 +320,18 @@
     });
 
     // ── logout ────────────────────────────────────────────────────
-    logoutButton?.addEventListener('click', () => {
+    logoutButton?.addEventListener('click', async () => {
         cachedUsers = null;
-        lockApp();
+        try {
+            await fetch('/api/auth/logout', {
+                method: 'POST',
+                credentials: 'same-origin',
+            });
+        } catch (error) {
+            // Local lock still protects the UI when the network is unavailable.
+        } finally {
+            lockApp();
+        }
     });
 
     // ── upload guard ──────────────────────────────────────────────
@@ -388,7 +437,7 @@
     // ── Apps Script Web App URL (opsional) ────────────────────────
     // Jika kamu deploy Apps Script sebagai Web App untuk membaca Drive,
     // isi URL-nya di sini. Biarkan kosong jika belum ada.
-    const DRIVE_SEARCH_API_URL = window.SIDOTI_DRIVE_SEARCH_URL || '';
+    const DRIVE_SEARCH_API_URL = window.SIDOTI_DRIVE_SEARCH_URL || '/api/documents/search';
 
     const openDocumentUrl = (url) => {
         if (!url) { window.alert('File belum tersedia.'); return; }
@@ -444,9 +493,9 @@
             const url = query
                 ? `${DRIVE_SEARCH_API_URL}?q=${encodeURIComponent(query)}`
                 : DRIVE_SEARCH_API_URL;
-            const resp = await fetch(url, { credentials: 'omit' });
-            if (!resp.ok) throw new Error('Gagal memuat dokumen.');
-            const data = await resp.json();
+            const resp = await fetch(url, { credentials: 'same-origin' });
+            const data = await resp.json().catch(() => ({}));
+            if (!resp.ok) throw new Error(data.message || 'Gagal memuat dokumen.');
             renderDocuments(Array.isArray(data.data) ? data.data : Array.isArray(data) ? data : []);
         } catch (err) {
             renderState(err.message || 'Dokumen gagal dimuat.', 'error');
