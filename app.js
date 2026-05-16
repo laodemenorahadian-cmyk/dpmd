@@ -82,7 +82,10 @@
         const data = await resp.json().catch(() => ({}));
 
         if (!resp.ok) {
-            throw new Error(data.message || 'Permintaan gagal diproses.');
+            const error = new Error(data.message || 'Permintaan gagal diproses.');
+            error.status = resp.status;
+            error.isHttpError = true;
+            throw error;
         }
 
         return data;
@@ -271,11 +274,27 @@
     };
 
     const authenticate = async (username, password) => {
+        let backendError = null;
+
         try {
             const data = await postJson('/api/auth/login', { username, password });
             return data.user;
-        } catch (serverError) {
-            return authenticateFromSheet(username, password);
+        } catch (error) {
+            backendError = error;
+
+            if (error.isHttpError && error.status !== 404 && error.status !== 405) {
+                throw error;
+            }
+        }
+
+        try {
+            return await authenticateFromSheet(username, password);
+        } catch (sheetError) {
+            if (backendError && !backendError.isHttpError) {
+                sheetError.message = `${sheetError.message} Koneksi API login tidak tersedia.`;
+            }
+
+            throw sheetError;
         }
     };
 
@@ -312,7 +331,7 @@
         event.preventDefault();
 
         const username = loginUsername.value.trim();
-        const password = loginPassword.value;
+        const password = loginPassword.value.trim();
 
         // Shortcut tamu tanpa password
         if (normalizeText(username) === 'tamu' && !password) {
