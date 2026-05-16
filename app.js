@@ -278,19 +278,19 @@
 
         try {
             const data = await postJson('/api/auth/login', { username, password });
-            return data.user;
+            if (data?.user) {
+                return data.user;
+            }
+
+            throw new Error('Respons API login tidak valid.');
         } catch (error) {
             backendError = error;
-
-            if (error.isHttpError && error.status !== 404 && error.status !== 405) {
-                throw error;
-            }
         }
 
         try {
             return await authenticateFromSheet(username, password);
         } catch (sheetError) {
-            if (backendError && !backendError.isHttpError) {
+            if (backendError) {
                 sheetError.message = `${sheetError.message} Koneksi API login tidak tersedia.`;
             }
 
