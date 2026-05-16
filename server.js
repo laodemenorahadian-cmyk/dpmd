@@ -13,6 +13,7 @@ const DRIVE_READONLY_SCOPE = 'https://www.googleapis.com/auth/drive.readonly';
 const SHEETS_READONLY_SCOPE = 'https://www.googleapis.com/auth/spreadsheets.readonly';
 const USER_SPREADSHEET_ID = process.env.GOOGLE_USER_SPREADSHEET_ID || '1aBSadBTJq7lylc-YJyM2_4A-EWlDxd66FCdq41Ylz0w';
 const USER_SHEET_NAME = process.env.GOOGLE_USER_SHEET_NAME || 'user';
+const USER_SHEET_NAMES = [...new Set([USER_SHEET_NAME, 'user', 'users'].filter(Boolean))];
 const FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder';
 const CACHE_TTL_MS = Number(process.env.DOCUMENT_CACHE_TTL_MS || 120000);
 const SESSION_TTL_MS = Number(process.env.SESSION_TTL_MS || 8 * 60 * 60 * 1000);
@@ -285,20 +286,42 @@ const mapUserRows = (values = []) => {
 };
 
 const getUsersFromSheet = async () => {
-    try {
-        const sheets = await createSheetsClient();
-        const range = `'${USER_SHEET_NAME.replace(/'/g, "''")}'!A1:Z1000`;
-        const response = await sheets.spreadsheets.values.get({
-            spreadsheetId: USER_SPREADSHEET_ID,
-            range,
-            valueRenderOption: 'FORMATTED_VALUE',
-        });
+    let lastError = null;
+    let sheets = null;
 
-        return mapUserRows(response.data.values || []);
+    try {
+        sheets = await createSheetsClient();
     } catch (error) {
-        const values = await fetchPublicSheetValues(USER_SPREADSHEET_ID, USER_SHEET_NAME);
-        return mapUserRows(values);
+        lastError = error;
     }
+
+    if (sheets) {
+        for (const sheetName of USER_SHEET_NAMES) {
+            try {
+                const range = `'${sheetName.replace(/'/g, "''")}'!A1:Z1000`;
+                const response = await sheets.spreadsheets.values.get({
+                    spreadsheetId: USER_SPREADSHEET_ID,
+                    range,
+                    valueRenderOption: 'FORMATTED_VALUE',
+                });
+
+                return mapUserRows(response.data.values || []);
+            } catch (error) {
+                lastError = error;
+            }
+        }
+    }
+
+    for (const sheetName of USER_SHEET_NAMES) {
+        try {
+            const values = await fetchPublicSheetValues(USER_SPREADSHEET_ID, sheetName);
+            return mapUserRows(values);
+        } catch (error) {
+            lastError = error;
+        }
+    }
+
+    throw lastError || new Error('Data user gagal dimuat.');
 };
 
 const isActiveUser = (user) => {

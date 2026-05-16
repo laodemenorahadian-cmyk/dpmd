@@ -5,7 +5,7 @@
     // Role yang valid: super_admin / admin_bidang / tamu
     // ============================================================
     const USER_SPREADSHEET_ID = '1aBSadBTJq7lylc-YJyM2_4A-EWlDxd66FCdq41Ylz0w';
-    const USER_SHEET_NAME = 'users'; // nama tab sheet user
+    const USER_SHEET_NAMES = ['user', 'users']; // nama tab sheet user yang dicoba berurutan
     // ============================================================
 
     const loginScreen    = document.getElementById('loginScreen');
@@ -199,10 +199,27 @@
 
     // ── autentikasi via Sheets ────────────────────────────────────
     let cachedUsers = null; // cache agar tidak fetch berulang
+    let activeUserSheetName = USER_SHEET_NAMES[0];
+
+    const loadUserSheet = async () => {
+        let lastError = null;
+
+        for (const sheetName of USER_SHEET_NAMES) {
+            try {
+                const rows = await loadSheet(USER_SPREADSHEET_ID, sheetName);
+                activeUserSheetName = sheetName;
+                return rows;
+            } catch (error) {
+                lastError = error;
+            }
+        }
+
+        throw lastError || new Error('Sheet user tidak dapat dimuat.');
+    };
 
     const getUsers = async () => {
         if (cachedUsers) return cachedUsers;
-        cachedUsers = await loadSheet(USER_SPREADSHEET_ID, USER_SHEET_NAME);
+        cachedUsers = await loadUserSheet();
         return cachedUsers;
     };
 
@@ -352,7 +369,8 @@
         userManageContent.textContent = 'Memuat data user...';
 
         try {
-            const users = await loadSheet(USER_SPREADSHEET_ID, USER_SHEET_NAME);
+            cachedUsers = null;
+            const users = await getUsers();
 
             if (!users.length) {
                 userManageContent.innerHTML = '<div class="document-search-state">Belum ada user.</div>';
