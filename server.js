@@ -357,8 +357,8 @@ const safeCompare = (left, right) => {
 };
 
 const isPasswordMatch = (inputPassword, storedPassword) => {
-    const input = String(inputPassword || '');
-    const stored = String(storedPassword || '');
+    const input = String(inputPassword || '').trim();
+    const stored = String(storedPassword || '').trim();
 
     if (!input || !stored) {
         return false;
@@ -718,6 +718,10 @@ app.get('*', (request, response) => {
     response.sendFile(path.join(__dirname, 'index.html'));
 });
 
-app.listen(PORT, () => {
-    console.log(`SIDOTi server berjalan di http://localhost:${PORT}`);
-});
+if (require.main === module) {
+    app.listen(PORT, () => {
+        console.log(`SIDOTi server berjalan di http://localhost:${PORT}`);
+    });
+}
+
+module.exports = app;
