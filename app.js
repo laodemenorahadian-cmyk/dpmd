@@ -250,13 +250,14 @@
         // Kolom bidang    : bidang / divisi / unit
         // Kolom status    : status / aktif
         const uNorm = normalizeText(username);
+        const passwordText = String(password || '').trim();
 
         const match = users.find((row) => {
             const rowUser = normalizeText(findCol(row, 'username','user','nama_pengguna','email'));
-            const rowPass = findCol(row, 'password','pass','sandi');
+            const rowPass = findCol(row, 'password','pass','sandi').trim();
             const status  = normalizeText(findCol(row, 'status','aktif'));
             const isActive = !status || status === 'aktif' || status === 'active';
-            return isActive && rowUser === uNorm && rowPass === password;
+            return isActive && rowUser === uNorm && rowPass === passwordText;
         });
 
         if (!match) throw new Error('Username atau password salah.');
