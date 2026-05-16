@@ -1,170 +1,109 @@
 (() => {
-    const loginScreen = document.getElementById('loginScreen');
-    const loginForm = document.getElementById('loginForm');
-    const loginUsername = document.getElementById('loginUsername');
-    const loginPassword = document.getElementById('loginPassword');
-    const loginMessage = document.getElementById('loginMessage');
-    const loginSubmit = document.getElementById('loginSubmit');
-    const guestLoginButton = document.getElementById('guestLoginButton') || document.querySelector('[data-guest-login]');
-    const logoutButton = document.getElementById('logoutButton');
-    const authUserPanel = document.getElementById('authUserPanel');
-    const authUserName = document.getElementById('authUserName');
-    const authUserMeta = document.getElementById('authUserMeta');
-    const manageUsersButton = document.getElementById('manageUsersButton');
-    const userManageModal = document.getElementById('userManageModal');
+    // ============================================================
+    // KONFIGURASI — sesuaikan dengan Spreadsheet user kamu
+    // Sheet harus punya kolom: username | password | nama | role | bidang | status
+    // Role yang valid: super_admin / admin_bidang / tamu
+    // ============================================================
+    const USER_SPREADSHEET_ID = '1aBSadBTJq7lylc-YJyM2_4A-EWlDxd66FCdq41Ylz0w';
+    const USER_SHEET_NAME = 'users'; // nama tab sheet user
+    // ============================================================
+
+    const loginScreen    = document.getElementById('loginScreen');
+    const loginForm      = document.getElementById('loginForm');
+    const loginUsername  = document.getElementById('loginUsername');
+    const loginPassword  = document.getElementById('loginPassword');
+    const loginMessage   = document.getElementById('loginMessage');
+    const loginSubmit    = document.getElementById('loginSubmit');
+    const guestLoginButton   = document.getElementById('guestLoginButton') || document.querySelector('[data-guest-login]');
+    const logoutButton       = document.getElementById('logoutButton');
+    const authUserPanel      = document.getElementById('authUserPanel');
+    const authUserName       = document.getElementById('authUserName');
+    const authUserMeta       = document.getElementById('authUserMeta');
+    const manageUsersButton  = document.getElementById('manageUsersButton');
+    const userManageModal    = document.getElementById('userManageModal');
     const closeUserManageModal = document.getElementById('closeUserManageModal');
-    const userManageContent = document.getElementById('userManageContent');
-    const DEFAULT_LOCAL_API_ORIGIN = 'http://localhost:3000';
-    const RESTORE_SESSION_ON_LOAD = false;
+    const userManageContent  = document.getElementById('userManageContent');
 
-    if (!loginScreen || !loginForm) {
-        return;
-    }
+    if (!loginScreen || !loginForm) return;
 
-    const roleLabels = {
-        super_admin: 'Super Admin',
-        admin_bidang: 'Admin Bidang',
-        tamu: 'Tamu',
-    };
-    let currentUser = null;
+    // ── helpers ──────────────────────────────────────────────────
+    const escapeHtml = (v) => String(v ?? '')
+        .replaceAll('&','&amp;').replaceAll('<','&lt;')
+        .replaceAll('>','&gt;').replaceAll('"','&quot;')
+        .replaceAll("'",'&#039;');
 
-    const escapeHtml = (value) => String(value ?? '')
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#039;');
-
-    const normalizeText = (value) => String(value || '')
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-z0-9]+/g, '');
+    const normalizeText = (v) => String(v || '')
+        .toLowerCase().normalize('NFD')
+        .replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'');
 
     const normalizeRole = (role) => {
-        const normalized = normalizeText(role);
-
-        if (normalized === 'superadmin' || normalized === 'superadministrator') {
-            return 'super_admin';
-        }
-
-        if (normalized === 'adminbidang') {
-            return 'admin_bidang';
-        }
-
-        if (normalized === 'tamu' || normalized === 'guest') {
-            return 'tamu';
-        }
-
-        return role;
+        const n = normalizeText(role);
+        if (n === 'superadmin' || n === 'superadministrator') return 'super_admin';
+        if (n === 'adminbidang') return 'admin_bidang';
+        if (n === 'tamu' || n === 'guest') return 'tamu';
+        return role || 'tamu';
     };
 
-    const getApiBaseUrl = () => {
-        const configuredBaseUrl = window.SIDOTI_API_BASE_URL || document.documentElement.dataset.apiBaseUrl;
-
-        if (configuredBaseUrl) {
-            return String(configuredBaseUrl).replace(/\/+$/, '');
-        }
-
-        const { protocol, hostname, port } = window.location;
-
-        if (protocol === 'file:') {
-            return DEFAULT_LOCAL_API_ORIGIN;
-        }
-
-        const isLocalHost = ['localhost', '127.0.0.1', '::1'].includes(hostname);
-
-        if (isLocalHost && port && port !== '3000') {
-            const apiHost = hostname === '::1' ? '[::1]' : hostname;
-            return `${protocol}//${apiHost}:3000`;
-        }
-
-        return '';
+    const roleLabels = {
+        super_admin:  'Super Admin',
+        admin_bidang: 'Admin Bidang',
+        tamu:         'Tamu',
     };
 
-    const API_BASE_URL = getApiBaseUrl();
-    const apiUrl = (path) => `${API_BASE_URL}${path}`;
+    // ── state ─────────────────────────────────────────────────────
+    let currentUser = null;
 
+    // ── UI helpers ────────────────────────────────────────────────
     const setAuthState = (state) => {
-        document.body.classList.remove('auth-pending', 'auth-locked', 'auth-ready');
+        document.body.classList.remove('auth-pending','auth-locked','auth-ready');
         document.body.classList.add(state);
     };
 
-    const setLoginMessage = (message, type = 'error') => {
-        loginMessage.textContent = message || '';
+    const setLoginMessage = (msg, type = 'error') => {
+        loginMessage.textContent = msg || '';
         loginMessage.classList.toggle('is-success', type === 'success');
     };
 
-    const setLoginBusy = (isBusy) => {
-        loginSubmit.disabled = isBusy;
-        if (guestLoginButton) {
-            guestLoginButton.disabled = isBusy;
-        }
-        loginUsername.disabled = isBusy;
-        loginPassword.disabled = isBusy;
+    const setLoginBusy = (busy) => {
+        loginSubmit.disabled = busy;
+        if (guestLoginButton) guestLoginButton.disabled = busy;
+        loginUsername.disabled = busy;
+        loginPassword.disabled = busy;
     };
 
+    // ── role controls ─────────────────────────────────────────────
     const roleCan = (control) => {
         const role = normalizeRole(currentUser?.role);
-
-        if (control === 'upload') {
-            return Boolean(currentUser) && role !== 'tamu';
-        }
-
-        if (control === 'edit') {
-            return Boolean(currentUser) && role !== 'tamu';
-        }
-
-        if (control === 'manage-users') {
-            return role === 'super_admin';
-        }
-
+        if (control === 'upload')       return Boolean(currentUser) && role !== 'tamu';
+        if (control === 'edit')         return Boolean(currentUser) && role !== 'tamu';
+        if (control === 'manage-users') return role === 'super_admin';
         return true;
     };
 
     const applyRoleControls = () => {
-        document.querySelectorAll('[data-role-control]').forEach((element) => {
-            const control = element.dataset.roleControl;
-            element.classList.toggle('hidden', !roleCan(control));
+        document.querySelectorAll('[data-role-control]').forEach((el) => {
+            el.classList.toggle('hidden', !roleCan(el.dataset.roleControl));
         });
     };
 
-    const setUploadScopeForRole = () => {
-        const kategori = document.getElementById('uploadKategori');
-        const subKategori = document.getElementById('uploadSubKategori');
-
-        if (!kategori || !subKategori) {
-            return;
-        }
-
-        kategori.disabled = false;
-        subKategori.disabled = false;
-    };
-
     const notifyAuthChange = () => {
-        window.dispatchEvent(new CustomEvent('sidoti:auth-change', {
-            detail: { user: currentUser },
-        }));
+        window.dispatchEvent(new CustomEvent('sidoti:auth-change', { detail: { user: currentUser } }));
     };
 
+    // ── apply / lock ──────────────────────────────────────────────
     const applyAuthenticatedUser = (user) => {
-        currentUser = {
-            ...user,
-            role: normalizeRole(user.role),
-        };
+        currentUser = { ...user, role: normalizeRole(user.role) };
         window.sidotiAuth = {
             user: currentUser,
             hasRole: (...roles) => roles.map(normalizeRole).includes(currentUser.role),
         };
 
         authUserPanel?.classList.remove('hidden');
-
-        if (authUserName) {
-            authUserName.textContent = currentUser.nama || currentUser.username || 'User';
-        }
-
+        if (authUserName) authUserName.textContent = currentUser.nama || currentUser.username || 'User';
         if (authUserMeta) {
-            authUserMeta.textContent = `${roleLabels[currentUser.role] || currentUser.role} - ${currentUser.bidang || 'umum'}`;
+            const roleLabel = roleLabels[currentUser.role] || currentUser.role;
+            const bidang    = currentUser.bidang ? currentUser.bidang.toUpperCase() : 'SEMUA';
+            authUserMeta.textContent = `${roleLabel} - ${bidang}`;
         }
 
         applyRoleControls();
@@ -173,7 +112,7 @@
     };
 
     const lockApp = () => {
-        currentUser = null;
+        currentUser    = null;
         window.sidotiAuth = null;
         applyRoleControls();
         notifyAuthChange();
@@ -183,101 +122,133 @@
         loginUsername.focus();
     };
 
-    const requestJson = async (url, options = {}) => {
-        let response;
+    // ── Google Sheets loader ──────────────────────────────────────
+    /**
+     * Memuat satu sheet via JSONP (tidak butuh API key / backend).
+     * Sheet wajib dibagikan "Siapa saja yang punya link bisa melihat".
+     */
+    const loadSheet = (spreadsheetId, sheetName) => new Promise((resolve, reject) => {
+        const cbName = `sidotiGviz_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+        const script  = document.createElement('script');
+        let settled   = false;
 
-        try {
-            response = await fetch(apiUrl(url), {
-                credentials: 'include',
-                headers: {
-                    ...(options.body ? { 'Content-Type': 'application/json' } : {}),
-                    ...(options.headers || {}),
-                },
-                ...options,
-            });
-        } catch (error) {
-            throw new Error('Server login belum tersambung. Jalankan npm start lalu buka http://localhost:3000.');
-        }
+        const cleanup = () => { delete window[cbName]; script.remove(); };
 
-        const data = await response.json().catch(() => ({}));
+        const timer = setTimeout(() => {
+            if (settled) return;
+            settled = true; cleanup();
+            reject(new Error('Koneksi ke Google Sheets timeout. Periksa koneksi internet.'));
+        }, 12000);
 
-        if (!response.ok) {
-            throw new Error(data.message || 'Permintaan gagal diproses.');
-        }
+        window[cbName] = (resp) => {
+            if (settled) return;
+            settled = true; clearTimeout(timer); cleanup();
 
-        return data;
+            if (!resp || resp.status === 'error') {
+                const msg = resp?.errors?.[0]?.detailed_message
+                    || resp?.errors?.[0]?.message
+                    || `Sheet "${sheetName}" tidak dapat dimuat.`;
+                reject(new Error(msg));
+                return;
+            }
+
+            // Ubah table → array of plain objects
+            const headers = resp.table.cols.map((c, i) =>
+                normalizeText(c.label || c.id || `col${i}`) || `col${i}`
+            );
+            const rows = resp.table.rows
+                .map((r) => {
+                    const obj = {};
+                    r.c.forEach((cell, i) => { obj[headers[i]] = cell?.v ?? ''; });
+                    return obj;
+                })
+                .filter((r) => Object.values(r).some((v) => String(v).trim() !== ''));
+
+            resolve(rows);
+        };
+
+        script.onerror = () => {
+            if (settled) return;
+            settled = true; clearTimeout(timer); cleanup();
+            reject(new Error(`Gagal memuat sheet "${sheetName}". Pastikan spreadsheet dibagikan publik.`));
+        };
+
+        script.src = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq`
+            + `?sheet=${encodeURIComponent(sheetName)}`
+            + `&headers=1&tqx=out:json;responseHandler:${cbName}`
+            + `&cacheBust=${Date.now()}`;
+
+        document.head.appendChild(script);
+    });
+
+    // ── autentikasi via Sheets ────────────────────────────────────
+    let cachedUsers = null; // cache agar tidak fetch berulang
+
+    const getUsers = async () => {
+        if (cachedUsers) return cachedUsers;
+        cachedUsers = await loadSheet(USER_SPREADSHEET_ID, USER_SHEET_NAME);
+        return cachedUsers;
     };
 
-    window.sidotiApiUrl = apiUrl;
+    const authenticate = async (username, password) => {
+        const users = await getUsers();
 
-    const checkSession = async () => {
-        try {
-            const data = await requestJson('/api/auth/me');
-            applyAuthenticatedUser(data.user);
-        } catch {
-            lockApp();
-        }
+        // Kolom yang dicari: username / user / nama_pengguna
+        // Kolom password  : password / pass / sandi
+        // Kolom role      : role / peran / jabatan
+        // Kolom nama      : nama / nama_lengkap / name
+        // Kolom bidang    : bidang / divisi / unit
+        // Kolom status    : status / aktif
+        const findCol = (row, ...aliases) => {
+            for (const a of aliases) {
+                const k = normalizeText(a);
+                if (row[k] !== undefined) return String(row[k]).trim();
+            }
+            return '';
+        };
+
+        const uNorm = normalizeText(username);
+
+        const match = users.find((row) => {
+            const rowUser = normalizeText(findCol(row, 'username','user','nama_pengguna','email'));
+            const rowPass = findCol(row, 'password','pass','sandi');
+            const status  = normalizeText(findCol(row, 'status','aktif'));
+            const isActive = !status || status === 'aktif' || status === 'active';
+            return isActive && rowUser === uNorm && rowPass === password;
+        });
+
+        if (!match) throw new Error('Username atau password salah.');
+
+        return {
+            username: findCol(match, 'username','user','nama_pengguna','email') || username,
+            nama:     findCol(match, 'nama','nama_lengkap','name') || username,
+            role:     findCol(match, 'role','peran','jabatan') || 'tamu',
+            bidang:   findCol(match, 'bidang','divisi','unit') || 'SEMUA',
+        };
     };
 
-    const renderUsers = (users) => {
-        if (!users.length) {
-            userManageContent.innerHTML = '<div class="document-search-state">Belum ada user.</div>';
-            return;
-        }
-
-        userManageContent.innerHTML = `
-            <table class="user-table">
-                <thead>
-                    <tr>
-                        <th>Nama</th>
-                        <th>Username</th>
-                        <th>Email</th>
-                        <th>Role</th>
-                        <th>Bidang</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${users.map((user) => {
-                        const isActive = normalizeText(user.status) === 'aktif';
-
-                        return `
-                            <tr>
-                                <td>${escapeHtml(user.nama)}</td>
-                                <td>${escapeHtml(user.username)}</td>
-                                <td>${escapeHtml(user.email || '-')}</td>
-                                <td><span class="role-pill">${escapeHtml(roleLabels[user.role] || user.role)}</span></td>
-                                <td>${escapeHtml(user.bidang || '-')}</td>
-                                <td><span class="status-pill ${isActive ? '' : 'is-inactive'}">${escapeHtml(user.status || '-')}</span></td>
-                            </tr>
-                        `;
-                    }).join('')}
-                </tbody>
-            </table>
-        `;
+    // ── login sebagai tamu ────────────────────────────────────────
+    const loginAsGuest = () => {
+        applyAuthenticatedUser({
+            nama:     'Tamu',
+            username: 'tamu',
+            role:     'tamu',
+            bidang:   'SEMUA',
+        });
+        loginUsername.value = '';
+        loginPassword.value = '';
+        setLoginMessage('', 'success');
     };
 
-    const openUserManager = async () => {
-        if (currentUser?.role !== 'super_admin') {
-            window.alert('Hanya Super Admin yang dapat mengelola user.');
-            return;
-        }
-
-        userManageModal.classList.remove('hidden');
-        userManageContent.textContent = 'Memuat user...';
-
-        try {
-            const data = await requestJson('/api/users');
-            renderUsers(Array.isArray(data.data) ? data.data : []);
-        } catch (error) {
-            userManageContent.textContent = error.message;
-        }
-    };
-
+    // ── form submit ───────────────────────────────────────────────
     loginForm.addEventListener('submit', async (event) => {
         event.preventDefault();
 
-        if (loginUsername.value.trim().toLowerCase() === 'tamu' && !loginPassword.value) {
+        const username = loginUsername.value.trim();
+        const password = loginPassword.value;
+
+        // Shortcut tamu tanpa password
+        if (normalizeText(username) === 'tamu' && !password) {
             loginAsGuest();
             return;
         }
@@ -286,339 +257,238 @@
         setLoginMessage('Memvalidasi akun...', 'success');
 
         try {
-            const data = await requestJson('/api/auth/login', {
-                method: 'POST',
-                body: JSON.stringify({
-                    username: loginUsername.value.trim(),
-                    password: loginPassword.value,
-                }),
-            });
-
+            const user = await authenticate(username, password);
             setLoginMessage('', 'success');
-            applyAuthenticatedUser(data.user);
-        } catch (error) {
-            setLoginMessage(error.message);
+            applyAuthenticatedUser(user);
+        } catch (err) {
+            setLoginMessage(err.message);
+            cachedUsers = null; // reset cache agar bisa retry
         } finally {
             setLoginBusy(false);
         }
     });
 
-    const loginAsGuest = async () => {
-        setLoginBusy(true);
-        setLoginMessage('Masuk sebagai tamu...', 'success');
+    // ── tombol masuk sebagai tamu ─────────────────────────────────
+    guestLoginButton?.addEventListener('click', (e) => { e.preventDefault(); loginAsGuest(); });
 
-        try {
-            const data = await requestJson('/api/auth/guest', {
-                method: 'POST',
-                body: JSON.stringify({ role: 'tamu' }),
-            });
-
-            loginUsername.value = '';
-            loginPassword.value = '';
-            setLoginMessage('', 'success');
-            applyAuthenticatedUser(data.user);
-        } catch (error) {
-            setLoginMessage(error.message);
-        } finally {
-            setLoginBusy(false);
-        }
-    };
-
-    guestLoginButton?.addEventListener('click', (event) => {
-        event.preventDefault();
+    document.addEventListener('click', (e) => {
+        if (e.defaultPrevented) return;
+        const btn = e.target.closest('[data-guest-login]');
+        if (!btn) return;
+        e.preventDefault();
         loginAsGuest();
     });
 
-    document.addEventListener('click', (event) => {
-        if (event.defaultPrevented) {
-            return;
-        }
-
-        const button = event.target.closest('[data-guest-login]');
-
-        if (!button) {
-            return;
-        }
-
-        event.preventDefault();
-        loginAsGuest();
+    // ── logout ────────────────────────────────────────────────────
+    logoutButton?.addEventListener('click', () => {
+        cachedUsers = null;
+        lockApp();
     });
 
-    logoutButton?.addEventListener('click', async () => {
-        try {
-            await requestJson('/api/auth/logout', { method: 'POST' });
-        } catch {
-            // Tetap kunci UI lokal jika session di server sudah hilang.
-        } finally {
-            lockApp();
-        }
-    });
-
+    // ── upload guard ──────────────────────────────────────────────
     document.getElementById('uploadButton')?.addEventListener('click', () => {
         if (currentUser?.role === 'tamu') {
             window.alert('Tamu hanya dapat melihat dan mengunduh dokumen.');
+        }
+    });
+
+    // ── kelola user (baca dari Sheets, tampilkan tanpa password) ──
+    const openUserManager = async () => {
+        if (normalizeRole(currentUser?.role) !== 'super_admin') {
+            window.alert('Hanya Super Admin yang dapat mengelola user.');
             return;
         }
 
-        window.setTimeout(setUploadScopeForRole, 0);
-    });
+        userManageModal.classList.remove('hidden');
+        userManageContent.textContent = 'Memuat data user...';
+
+        try {
+            const users = await loadSheet(USER_SPREADSHEET_ID, USER_SHEET_NAME);
+
+            if (!users.length) {
+                userManageContent.innerHTML = '<div class="document-search-state">Belum ada user.</div>';
+                return;
+            }
+
+            const findCol = (row, ...aliases) => {
+                for (const a of aliases) {
+                    const k = normalizeText(a);
+                    if (row[k] !== undefined) return String(row[k]).trim();
+                }
+                return '';
+            };
+
+            userManageContent.innerHTML = `
+                <table class="user-table">
+                    <thead>
+                        <tr>
+                            <th>Nama</th><th>Username</th><th>Role</th>
+                            <th>Bidang</th><th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${users.map((u) => {
+                            const role    = normalizeRole(findCol(u,'role','peran','jabatan'));
+                            const status  = findCol(u,'status','aktif') || 'aktif';
+                            const isActive = normalizeText(status) === 'aktif';
+                            return `
+                                <tr>
+                                    <td>${escapeHtml(findCol(u,'nama','nama_lengkap','name'))}</td>
+                                    <td>${escapeHtml(findCol(u,'username','user','email'))}</td>
+                                    <td><span class="role-pill">${escapeHtml(roleLabels[role] || role)}</span></td>
+                                    <td>${escapeHtml(findCol(u,'bidang','divisi','unit') || '-')}</td>
+                                    <td><span class="status-pill ${isActive ? '' : 'is-inactive'}">${escapeHtml(status)}</span></td>
+                                </tr>`;
+                        }).join('')}
+                    </tbody>
+                </table>`;
+        } catch (err) {
+            userManageContent.textContent = err.message;
+        }
+    };
 
     manageUsersButton?.addEventListener('click', openUserManager);
     closeUserManageModal?.addEventListener('click', () => userManageModal.classList.add('hidden'));
-    userManageModal?.addEventListener('click', (event) => {
-        if (event.target === userManageModal) {
-            userManageModal.classList.add('hidden');
-        }
+    userManageModal?.addEventListener('click', (e) => {
+        if (e.target === userManageModal) userManageModal.classList.add('hidden');
     });
 
-    if (RESTORE_SESSION_ON_LOAD) {
-        checkSession();
-    } else {
-        lockApp();
-    }
+    // ── inisialisasi: langsung tampilkan login ────────────────────
+    lockApp();
 })();
 
+// ── Document Search (tidak bergantung backend) ────────────────────
+// Fitur pencarian dokumen bergantung pada API Drive.
+// Di Vercel tanpa backend, panel search tetap tampil tapi tidak mengembalikan
+// hasil dari API. Untuk mengaktifkan: deploy /api/documents ke Vercel Functions
+// atau hubungkan Google Drive API via Apps Script Web App.
 (() => {
-    const searchRoot = document.getElementById('documentSearchRoot');
-    const searchInput = document.getElementById('documentSearchInput');
+    const searchRoot    = document.getElementById('documentSearchRoot');
+    const searchInput   = document.getElementById('documentSearchInput');
     const searchResults = document.getElementById('documentSearchResults');
-    const viewAllDocumentButtons = document.querySelectorAll('[data-view-all-documents]');
+    const viewAllBtns   = document.querySelectorAll('[data-view-all-documents]');
 
-    if (!searchRoot || !searchInput || !searchResults) {
-        return;
-    }
+    if (!searchRoot || !searchInput || !searchResults) return;
 
-    const debounceDelay = 350;
-    const defaultDocumentLimit = 8;
-    const allDocumentLimit = 100;
-    let debounceTimer = null;
-    let activeRequestId = 0;
+    const escapeHtml = (v) => String(v ?? '')
+        .replaceAll('&','&amp;').replaceAll('<','&lt;')
+        .replaceAll('>','&gt;').replaceAll('"','&quot;')
+        .replaceAll("'",'&#039;');
 
-    const escapeHtml = (value) => String(value ?? '')
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#039;');
-
-    const getApiBaseUrl = () => {
-        const configuredBaseUrl = window.SIDOTI_API_BASE_URL || document.documentElement.dataset.apiBaseUrl;
-
-        if (configuredBaseUrl) {
-            return String(configuredBaseUrl).replace(/\/+$/, '');
-        }
-
-        const { protocol, hostname, port } = window.location;
-
-        if (protocol === 'file:') {
-            return 'http://localhost:3000';
-        }
-
-        const isLocalHost = ['localhost', '127.0.0.1', '::1'].includes(hostname);
-
-        if (isLocalHost && port && port !== '3000') {
-            const apiHost = hostname === '::1' ? '[::1]' : hostname;
-            return `${protocol}//${apiHost}:3000`;
-        }
-
-        return '';
+    const setOpen = (open) => {
+        searchResults.classList.toggle('hidden', !open);
+        searchInput.setAttribute('aria-expanded', String(open));
     };
 
-    const apiUrl = window.sidotiApiUrl || ((path) => `${getApiBaseUrl()}${path}`);
-
-    const setResultsOpen = (isOpen) => {
-        searchResults.classList.toggle('hidden', !isOpen);
-        searchInput.setAttribute('aria-expanded', String(isOpen));
+    const renderState = (msg, type = 'info') => {
+        searchResults.innerHTML = `<div class="document-search-state document-search-state-${escapeHtml(type)}">${escapeHtml(msg)}</div>`;
+        setOpen(true);
     };
 
-    const formatDate = (value) => {
-        if (!value) {
-            return '';
-        }
-
-        const date = new Date(value);
-
-        if (Number.isNaN(date.getTime())) {
-            return '';
-        }
-
-        return new Intl.DateTimeFormat('id-ID', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric',
-        }).format(date);
-    };
-
-    const renderState = (message, type = 'info') => {
-        searchResults.innerHTML = `
-            <div class="document-search-state document-search-state-${escapeHtml(type)}">
-                ${escapeHtml(message)}
-            </div>
-        `;
-        setResultsOpen(true);
-    };
+    // ── Apps Script Web App URL (opsional) ────────────────────────
+    // Jika kamu deploy Apps Script sebagai Web App untuk membaca Drive,
+    // isi URL-nya di sini. Biarkan kosong jika belum ada.
+    const DRIVE_SEARCH_API_URL = window.SIDOTI_DRIVE_SEARCH_URL || '';
 
     const openDocumentUrl = (url) => {
-        if (!url) {
-            window.alert('File PDF belum tersedia.');
+        if (!url) { window.alert('File belum tersedia.'); return; }
+        const w = window.open(url, '_blank', 'noopener,noreferrer');
+        if (!w) window.location.href = url;
+    };
+
+    const renderDocuments = (docs) => {
+        if (!docs.length) { renderState('Dokumen tidak ditemukan.', 'empty'); return; }
+
+        const formatDate = (v) => {
+            if (!v) return '';
+            const d = new Date(v);
+            return isNaN(d) ? '' : new Intl.DateTimeFormat('id-ID',{day:'2-digit',month:'short',year:'numeric'}).format(d);
+        };
+
+        searchResults.innerHTML = `<div class="document-search-list">${
+            docs.map((doc) => {
+                const modDate = formatDate(doc.modifiedTime);
+                const folder  = doc.folderPath || 'SIDOTi';
+                return `
+                    <article class="document-search-card"
+                        data-preview-url="${escapeHtml(doc.previewUrl || doc.fileUrl || '')}"
+                        data-download-url="${escapeHtml(doc.downloadUrl || doc.fileUrl || '')}">
+                        <div class="document-search-icon" aria-hidden="true"><i class="far fa-file-pdf"></i></div>
+                        <div class="document-search-content">
+                            <h3 class="document-search-title">${escapeHtml(doc.name || 'Dokumen')}</h3>
+                            <p class="document-search-meta">${escapeHtml(folder)}${modDate ? ` - ${escapeHtml(modDate)}` : ''}</p>
+                            <div class="document-search-actions">
+                                <button type="button" class="document-search-action" data-search-action="preview">
+                                    <i class="fas fa-eye" aria-hidden="true"></i><span>Preview</span>
+                                </button>
+                                <button type="button" class="document-search-action document-search-action-download" data-search-action="download">
+                                    <i class="fas fa-download" aria-hidden="true"></i><span>Download</span>
+                                </button>
+                            </div>
+                        </div>
+                    </article>`;
+            }).join('')
+        }</div>`;
+        setOpen(true);
+    };
+
+    const runSearch = async (query) => {
+        if (!DRIVE_SEARCH_API_URL) {
+            renderState('Pencarian dokumen memerlukan konfigurasi API. Hubungi administrator.', 'info');
             return;
         }
-
-        const openedWindow = window.open(url, '_blank', 'noopener,noreferrer');
-
-        if (!openedWindow) {
-            window.location.href = url;
-        }
-    };
-
-    const getDocuments = async (query, limit = defaultDocumentLimit) => {
-        const endpoint = query
-            ? `/api/documents/search?q=${encodeURIComponent(query)}`
-            : `/api/documents?limit=${encodeURIComponent(limit)}`;
-        let response;
-
-        try {
-            response = await fetch(apiUrl(endpoint), {
-                credentials: 'include',
-            });
-        } catch (error) {
-            throw new Error('Server dokumen belum tersambung. Jalankan npm start lalu buka http://localhost:3000.');
-        }
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.message || 'Dokumen gagal dimuat.');
-        }
-
-        const payload = await response.json();
-        return Array.isArray(payload.data) ? payload.data : [];
-    };
-
-    const renderDocuments = (documents) => {
-        if (!documents.length) {
-            renderState('Dokumen tidak ditemukan', 'empty');
-            return;
-        }
-
-        searchResults.innerHTML = `
-            <div class="document-search-list">
-                ${documents.map((documentData) => {
-                    const modifiedDate = formatDate(documentData.modifiedTime);
-                    const folderPath = documentData.folderPath || 'SIDOTi';
-
-                    return `
-                        <article class="document-search-card" data-preview-url="${escapeHtml(documentData.previewUrl || documentData.fileUrl || '')}" data-download-url="${escapeHtml(documentData.downloadUrl || documentData.fileUrl || '')}">
-                            <div class="document-search-icon" aria-hidden="true">
-                                <i class="far fa-file-pdf"></i>
-                            </div>
-                            <div class="document-search-content">
-                                <h3 class="document-search-title">${escapeHtml(documentData.name || 'Dokumen tanpa nama')}</h3>
-                                <p class="document-search-meta">${escapeHtml(folderPath)}${modifiedDate ? ` - ${escapeHtml(modifiedDate)}` : ''}</p>
-                                <div class="document-search-actions">
-                                    <button type="button" class="document-search-action" data-search-action="preview" aria-label="Preview PDF ${escapeHtml(documentData.name || 'dokumen')}">
-                                        <i class="fas fa-eye" aria-hidden="true"></i>
-                                        <span>Preview</span>
-                                    </button>
-                                    <button type="button" class="document-search-action document-search-action-download" data-search-action="download" aria-label="Download PDF ${escapeHtml(documentData.name || 'dokumen')}">
-                                        <i class="fas fa-download" aria-hidden="true"></i>
-                                        <span>Download</span>
-                                    </button>
-                                </div>
-                            </div>
-                        </article>
-                    `;
-                }).join('')}
-            </div>
-        `;
-        setResultsOpen(true);
-    };
-
-    const runSearch = async (query, limit = defaultDocumentLimit) => {
-        const requestId = ++activeRequestId;
 
         renderState('Memuat dokumen...', 'loading');
 
         try {
-            const documents = await getDocuments(query, limit);
-
-            if (requestId !== activeRequestId) {
-                return;
-            }
-
-            renderDocuments(documents);
-        } catch (error) {
-            if (requestId !== activeRequestId) {
-                return;
-            }
-
-            renderState(error.message || 'Dokumen gagal dimuat.', 'error');
+            const url = query
+                ? `${DRIVE_SEARCH_API_URL}?q=${encodeURIComponent(query)}`
+                : DRIVE_SEARCH_API_URL;
+            const resp = await fetch(url, { credentials: 'omit' });
+            if (!resp.ok) throw new Error('Gagal memuat dokumen.');
+            const data = await resp.json();
+            renderDocuments(Array.isArray(data.data) ? data.data : Array.isArray(data) ? data : []);
+        } catch (err) {
+            renderState(err.message || 'Dokumen gagal dimuat.', 'error');
         }
     };
 
+    let debounceTimer = null;
     const scheduleSearch = () => {
-        window.clearTimeout(debounceTimer);
-        debounceTimer = window.setTimeout(() => {
-            runSearch(searchInput.value.trim());
-        }, debounceDelay);
-    };
-
-    const showAllDocuments = () => {
-        window.clearTimeout(debounceTimer);
-        searchInput.value = '';
-        searchRoot.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        runSearch('', allDocumentLimit);
-        searchInput.focus({ preventScroll: true });
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => runSearch(searchInput.value.trim()), 350);
     };
 
     searchInput.addEventListener('input', scheduleSearch);
-
     searchInput.addEventListener('focus', () => {
-        if (!searchResults.innerHTML.trim()) {
-            runSearch(searchInput.value.trim());
-            return;
-        }
-
-        setResultsOpen(true);
+        if (!searchResults.innerHTML.trim()) runSearch(searchInput.value.trim());
+        else setOpen(true);
+    });
+    searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') { setOpen(false); searchInput.blur(); }
     });
 
-    searchInput.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape') {
-            setResultsOpen(false);
-            searchInput.blur();
-        }
-    });
-
-    searchResults.addEventListener('click', (event) => {
-        const actionButton = event.target.closest('[data-search-action]');
-
-        if (!actionButton) {
-            return;
-        }
-
-        const card = actionButton.closest('.document-search-card');
-        const action = actionButton.dataset.searchAction;
-        const url = action === 'download'
+    searchResults.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-search-action]');
+        if (!btn) return;
+        const card = btn.closest('.document-search-card');
+        const url  = btn.dataset.searchAction === 'download'
             ? card?.dataset.downloadUrl
             : card?.dataset.previewUrl;
-
         openDocumentUrl(url || '');
     });
 
-    viewAllDocumentButtons.forEach((button) => {
-        button.addEventListener('click', (event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            showAllDocuments();
+    viewAllBtns.forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault(); e.stopPropagation();
+            searchInput.value = '';
+            searchRoot.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            runSearch('');
+            searchInput.focus({ preventScroll: true });
         });
     });
 
-    document.addEventListener('click', (event) => {
-        if (event.defaultPrevented) {
-            return;
-        }
-
-        if (!searchRoot.contains(event.target)) {
-            setResultsOpen(false);
-        }
+    document.addEventListener('click', (e) => {
+        if (!searchRoot.contains(e.target)) setOpen(false);
     });
 })();
