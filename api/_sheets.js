@@ -3,6 +3,11 @@ const { google } = require('googleapis');
 const DEFAULT_SPREADSHEET_ID = '1aBSadBTJq7lylc-YJyM2_4A-EWlDxd66FCdq41Ylz0w';
 const SHEETS_READONLY_SCOPE = 'https://www.googleapis.com/auth/spreadsheets.readonly';
 const SHEETS_WRITE_SCOPE = 'https://www.googleapis.com/auth/spreadsheets';
+const WRITE_CREDENTIAL_MESSAGE = [
+    'Simpan data belum aktif di server.',
+    'Tambahkan GOOGLE_SERVICE_ACCOUNT_JSON atau GOOGLE_SERVICE_ACCOUNT_BASE64 di Environment Variables Vercel, lalu bagikan spreadsheet ke email service account sebagai Editor.',
+    'Alternatif: tambahkan GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET, dan GOOGLE_OAUTH_REFRESH_TOKEN dengan scope Google Sheets.',
+].join(' ');
 
 const normalizeText = (value) => String(value || '')
     .toLowerCase()
@@ -41,6 +46,40 @@ const getServiceAccountCredentials = () => {
     }
 
     return null;
+};
+
+const hasServiceAccountCredentials = () => Boolean(
+    process.env.GOOGLE_SERVICE_ACCOUNT_JSON
+    || process.env.GOOGLE_SERVICE_ACCOUNT_BASE64
+    || process.env.GOOGLE_APPLICATION_CREDENTIALS
+);
+
+const hasOAuthRefreshCredentials = () => Boolean(
+    (process.env.GOOGLE_OAUTH_CLIENT_ID || process.env.GOOGLE_CLIENT_ID)
+    && (process.env.GOOGLE_OAUTH_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET)
+    && (process.env.GOOGLE_OAUTH_REFRESH_TOKEN || process.env.GOOGLE_REFRESH_TOKEN)
+);
+
+const getWriteCredentialMode = () => {
+    if (hasServiceAccountCredentials()) {
+        return 'service_account';
+    }
+
+    if (hasOAuthRefreshCredentials()) {
+        return 'oauth_refresh_token';
+    }
+
+    return null;
+};
+
+const getWriteCredentialStatus = () => {
+    const mode = getWriteCredentialMode();
+
+    return {
+        writeEnabled: Boolean(mode),
+        mode,
+        message: mode ? 'Simpan data aktif di server.' : WRITE_CREDENTIAL_MESSAGE,
+    };
 };
 
 const getOAuthRefreshClient = () => {
@@ -109,7 +148,7 @@ const createSheetsWriteClient = async () => {
     const auth = await createGoogleAuth([SHEETS_WRITE_SCOPE]);
 
     if (!auth) {
-        throw new Error('Simpan data belum aktif di server. Tambahkan GOOGLE_SERVICE_ACCOUNT_JSON atau GOOGLE_SERVICE_ACCOUNT_BASE64 di Environment Variables Vercel, lalu bagikan spreadsheet ke email service account tersebut sebagai Editor.');
+        throw new Error(WRITE_CREDENTIAL_MESSAGE);
     }
 
     return google.sheets({
@@ -188,6 +227,7 @@ module.exports = {
     createSheetsWriteClient,
     getQuery,
     getSpreadsheetId,
+    getWriteCredentialStatus,
     handleApiError,
     readJsonBody,
     sendJson,
