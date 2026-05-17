@@ -1983,9 +1983,11 @@
         let activeSheetEditor = null;
         let sheetEditorHeaders = [];
         let sheetEditorFieldTargets = [];
+        let sheetEditorCurrentValues = [];
         let sheetEditorOriginalRowCount = 0;
         let sheetEditorOriginalColumnCount = 0;
         let sheetEditWriteStatus = null;
+        const SHEET_EDIT_DRAFT_STORAGE_KEY = 'sidotiSheetEditDrafts';
         let infographicSlides = [];
         let activeInfographicSlideIndex = 0;
         let infographicSlidesAutoplayTimer = null;
@@ -2573,7 +2575,7 @@
         };
 
         const setSheetEditBusy = (isBusy) => {
-            sheetEditSave.disabled = isBusy || sheetEditWriteStatus?.writeEnabled === false;
+            sheetEditSave.disabled = isBusy;
             sheetEditAddRow.disabled = isBusy;
             sheetEditRefresh.disabled = isBusy;
             sheetEditOpenSheet.disabled = isBusy;
@@ -2704,6 +2706,85 @@
             return Array.from({ length: rowCount }, (_, rowIndex) => (
                 Array.from({ length: columnCount }, (_, columnIndex) => values[rowIndex]?.[columnIndex] ?? '')
             ));
+        };
+
+        const getSheetDraftKey = (config = activeSheetEditor) => `${getEditorSpreadsheetId(config)}::${config?.sheetName || ''}`;
+
+        const getSheetEditDrafts = () => {
+            try {
+                return JSON.parse(localStorage.getItem(SHEET_EDIT_DRAFT_STORAGE_KEY)) || {};
+            } catch {
+                return {};
+            }
+        };
+
+        const getSheetEditDraftValues = (config) => {
+            const draft = getSheetEditDrafts()[getSheetDraftKey(config)];
+            return Array.isArray(draft?.values) ? draft.values : null;
+        };
+
+        const saveSheetEditDraftValues = (config, values) => {
+            const drafts = getSheetEditDrafts();
+            drafts[getSheetDraftKey(config)] = {
+                spreadsheetId: getEditorSpreadsheetId(config),
+                sheetName: config.sheetName,
+                values,
+                savedAt: new Date().toISOString(),
+            };
+            localStorage.setItem(SHEET_EDIT_DRAFT_STORAGE_KEY, JSON.stringify(drafts));
+        };
+
+        const normalizeSheetValuesToRows = (values) => {
+            const normalizedValues = normalizeSheetEditorValues(values);
+            const headers = (normalizedValues[0] || []).map((header, index) => (
+                normalizeHeader(header || `kolom${index + 1}`) || `kolom${index + 1}`
+            ));
+
+            return normalizedValues.slice(1)
+                .map((row) => headers.reduce((record, key, index) => {
+                    const value = row[index] ?? '';
+                    record[key] = {
+                        value,
+                        formatted: value,
+                    };
+                    return record;
+                }, {}))
+                .filter((row) => Object.values(row).some((cell) => getCellText(cell) !== ''));
+        };
+
+        const getSheetEditDraftRows = (sheetName) => {
+            const values = getSheetEditDraftValues({
+                spreadsheetId: DASHBOARD_SPREADSHEET_ID,
+                sheetName,
+            });
+            return values ? normalizeSheetValuesToRows(values) : null;
+        };
+
+        const getCurrentSheetFieldEditorValues = (config) => {
+            const baseValues = normalizeSheetEditorValues(sheetEditorCurrentValues);
+            const rowCount = Math.max(baseValues.length, config.dataRowNumber || 2);
+            const columnCount = Math.max(
+                sheetEditorOriginalColumnCount,
+                ...baseValues.map((row) => row.length),
+                ...sheetEditorFieldTargets.map((field) => field.columnIndex + 1),
+            );
+            const values = Array.from({ length: rowCount }, (_, rowIndex) => (
+                Array.from({ length: columnCount }, (_, columnIndex) => baseValues[rowIndex]?.[columnIndex] ?? '')
+            ));
+
+            sheetEditorFieldTargets.forEach((field) => {
+                values[field.rowNumber - 1][field.columnIndex] = document.getElementById(field.inputId)?.value ?? '';
+            });
+
+            return values;
+        };
+
+        const saveSheetEditorLocalDraft = (config, values) => {
+            const normalizedValues = normalizeSheetEditorValues(values);
+            saveSheetEditDraftValues(config, normalizedValues);
+            sheetEditorCurrentValues = normalizedValues;
+            sheetEditorOriginalRowCount = normalizedValues.length;
+            sheetEditorOriginalColumnCount = normalizedValues[0]?.length || 2;
         };
 
         window.getSidotiAppOrigin = window.getSidotiAppOrigin || (() => {
@@ -2840,6 +2921,12 @@
         };
 
         const fetchSheetEditorValues = async (config) => {
+            const draftValues = getSheetEditDraftValues(config);
+
+            if (draftValues) {
+                return normalizeSheetEditorValues(draftValues);
+            }
+
             const range = `${quoteSheetName(config.sheetName)}!${config.range}`;
 
             try {
@@ -2921,17 +3008,18 @@
                     fetchSheetEditorValues(editorConfig),
                     refreshSheetEditWriteStatus(),
                 ]);
-                sheetEditorOriginalRowCount = values.length;
-                sheetEditorOriginalColumnCount = values[0]?.length || 2;
+                sheetEditorCurrentValues = normalizeSheetEditorValues(values);
+                sheetEditorOriginalRowCount = sheetEditorCurrentValues.length;
+                sheetEditorOriginalColumnCount = sheetEditorCurrentValues[0]?.length || 2;
                 if (editorConfig.fields) {
-                    renderSheetFieldEditor(values, editorConfig);
+                    renderSheetFieldEditor(sheetEditorCurrentValues, editorConfig);
                 } else {
-                    renderSheetEditorTable(values);
+                    renderSheetEditorTable(sheetEditorCurrentValues);
                 }
                 if (writeStatus.writeEnabled) {
                     setSheetEditMessage('Data siap diubah dan disimpan.', 'success');
                 } else {
-                    setSheetEditMessage(getSheetEditWriteDisabledMessage(), 'error');
+                    setSheetEditMessage('Data bisa diedit. Karena simpan ke Google Sheets belum aktif di server, tombol Simpan akan menyimpan draft lokal di browser ini.', 'info');
                 }
             } catch (error) {
                 sheetEditTableWrap.innerHTML = '<div class="p-6 text-sm font-semibold text-gray-500">Tabel belum dapat ditampilkan.</div>';
@@ -3106,7 +3194,7 @@
                     return;
                 }
 
-                resolve(normalizeSheetRows(response.table));
+                resolve(getSheetEditDraftRows(sheetName) || normalizeSheetRows(response.table));
             };
 
             script.onerror = () => {
@@ -4538,12 +4626,20 @@
             }
 
             try {
+                setSheetEditBusy(true);
+
                 if (sheetEditWriteStatus?.writeEnabled === false) {
-                    setSheetEditMessage(getSheetEditWriteDisabledMessage(), 'error');
+                    const draftValues = activeSheetEditor.fields
+                        ? getCurrentSheetFieldEditorValues(activeSheetEditor)
+                        : getCurrentSheetEditorValues();
+
+                    saveSheetEditorLocalDraft(activeSheetEditor, draftValues);
+                    setSheetEditMessage('Draft tersimpan di browser ini. Memuat ulang tampilan dashboard...', 'success');
+                    await loadDashboardData();
+                    setSheetEditMessage('Draft tersimpan dan tampilan dashboard sudah diperbarui. Sinkron ke Google Sheets akan aktif setelah kredensial tulis ditambahkan di Vercel.', 'success');
                     return;
                 }
 
-                setSheetEditBusy(true);
                 setSheetEditMessage('Menyimpan perubahan ke Google Sheet...');
 
                 if (activeSheetEditor.fields) {
