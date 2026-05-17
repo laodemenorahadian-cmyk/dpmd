@@ -5009,10 +5009,8 @@
 })();
 
 // ── Document Search (tidak bergantung backend) ────────────────────
-// Fitur pencarian dokumen bergantung pada API Drive.
-// Di Vercel tanpa backend, panel search tetap tampil tapi tidak mengembalikan
-// hasil dari API. Untuk mengaktifkan: deploy /api/documents ke Vercel Functions
-// atau hubungkan Google Drive API via Apps Script Web App.
+// Fitur pencarian dokumen memakai Vercel Function /api/documents/search.
+// Pastikan GOOGLE_API_KEY atau kredensial service account aktif di Vercel.
 (() => {
     const searchRoot    = document.getElementById('documentSearchRoot');
     const searchInput   = document.getElementById('documentSearchInput');
