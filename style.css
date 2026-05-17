@@ -1,1 +1,94 @@
-/* Styles moved into index.html as requested. PNG image references now live in HTML. */
+/*
+ * SIDOTi header image policy:
+ * - sidot.png and berakhlak.png are embedded directly in index.html as PNG data URIs.
+ * - Keep this stylesheet free of CSS-based PNG references so deployment cannot serve stale image paths.
+ */
+.dashboard-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 28px;
+}
+
+.dashboard-header-main {
+    flex: 1 1 520px;
+    width: min(100%, 720px);
+    min-width: 0;
+}
+
+.dashboard-header-logos {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    margin-bottom: 18px;
+}
+
+.dashboard-header-actions {
+    display: grid;
+    justify-items: end;
+    gap: 16px;
+    flex: 0 0 min(38%, 390px);
+}
+
+.dashboard-action-row {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 16px;
+}
+
+.dashboard-logo-sidot,
+.dashboard-logo-berakhlak {
+    display: block;
+    max-width: 100%;
+    object-fit: contain;
+}
+
+.dashboard-logo-sidot {
+    width: min(100%, 310px);
+    height: 112px;
+    object-position: left center;
+}
+
+.dashboard-logo-berakhlak {
+    width: min(100%, 360px);
+    height: 92px;
+    object-position: right center;
+}
+
+@media (max-width: 1023px) {
+    .dashboard-header {
+        flex-direction: column;
+    }
+
+    .dashboard-header-main,
+    .dashboard-header-actions {
+        width: 100%;
+        flex-basis: auto;
+    }
+
+    .dashboard-header-actions,
+    .dashboard-action-row {
+        justify-items: start;
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 639px) {
+    .dashboard-header-logos {
+        gap: 12px;
+    }
+
+    .dashboard-action-row {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .dashboard-logo-sidot {
+        height: 88px;
+    }
+
+    .dashboard-logo-berakhlak {
+        height: 68px;
+    }
+}
