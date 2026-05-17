@@ -2705,25 +2705,52 @@
             ));
         };
 
-        const updateSheetEditorFields = async (config) => {
-            const data = sheetEditorFieldTargets.map((field) => ({
-                range: `${quoteSheetName(config.sheetName)}!${field.columnLetter}${field.rowNumber}`,
-                values: [[document.getElementById(field.inputId)?.value ?? '']],
-            }));
+        const SIDOTI_SHEETS_API_BASE_URL = window.SIDOTI_SHEETS_API_BASE_URL || '/api/sheets';
+        const ALLOW_BROWSER_SHEETS_OAUTH = window.SIDOTI_ALLOW_BROWSER_OAUTH === true;
 
-            await getSheetsApiJson('values:batchUpdate', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    valueInputOption: 'USER_ENTERED',
-                    data,
-                }),
-            }, getEditorSpreadsheetId(config));
+        const getSidotiSheetsApiUrl = (path, params = {}) => {
+            const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+            const url = new URL(`${SIDOTI_SHEETS_API_BASE_URL}${normalizedPath}`, window.location.origin);
+
+            Object.entries(params).forEach(([key, value]) => {
+                if (value !== undefined && value !== null && value !== '') {
+                    url.searchParams.set(key, value);
+                }
+            });
+
+            return url.toString();
         };
 
-        const getSheetsApiJson = async (path, options = {}, spreadsheetId = DASHBOARD_SPREADSHEET_ID) => {
+        const getSidotiSheetsAuthHeaders = () => {
+            const user = window.sidotiAuth?.user || {};
+
+            return {
+                'X-SIDOTI-Role': user.role || '',
+                'X-SIDOTI-Username': user.username || '',
+            };
+        };
+
+        const getSidotiSheetsApiJson = async (path, options = {}, params = {}) => {
+            const response = await fetch(getSidotiSheetsApiUrl(path, params), {
+                cache: 'no-store',
+                credentials: 'omit',
+                ...options,
+                headers: {
+                    Accept: 'application/json',
+                    ...getSidotiSheetsAuthHeaders(),
+                    ...(options.headers || {}),
+                },
+            });
+            const data = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                throw new Error(data.message || 'API Google Sheets SIDOTi gagal merespons.');
+            }
+
+            return data;
+        };
+
+        const getBrowserSheetsApiJson = async (path, options = {}, spreadsheetId = DASHBOARD_SPREADSHEET_ID) => {
             const accessToken = await getGoogleAccessToken();
             const response = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/${path}`, {
                 ...options,
@@ -2741,27 +2768,97 @@
             return response.json();
         };
 
+        const updateSheetEditorFields = async (config) => {
+            const data = sheetEditorFieldTargets.map((field) => ({
+                range: `${quoteSheetName(config.sheetName)}!${field.columnLetter}${field.rowNumber}`,
+                values: [[document.getElementById(field.inputId)?.value ?? '']],
+            }));
+
+            try {
+                await getSidotiSheetsApiJson('/batchUpdate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        spreadsheetId: getEditorSpreadsheetId(config),
+                        valueInputOption: 'USER_ENTERED',
+                        data,
+                    }),
+                });
+            } catch (error) {
+                if (!ALLOW_BROWSER_SHEETS_OAUTH) {
+                    throw error;
+                }
+
+                await getBrowserSheetsApiJson('values:batchUpdate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        valueInputOption: 'USER_ENTERED',
+                        data,
+                    }),
+                }, getEditorSpreadsheetId(config));
+            }
+        };
+
         const fetchSheetEditorValues = async (config) => {
             const range = `${quoteSheetName(config.sheetName)}!${config.range}`;
-            const data = await getSheetsApiJson(`values/${encodeURIComponent(range)}?majorDimension=ROWS`, {}, getEditorSpreadsheetId(config));
 
-            return normalizeSheetEditorValues(data.values || []);
+            try {
+                const data = await getSidotiSheetsApiJson('/values', {}, {
+                    spreadsheetId: getEditorSpreadsheetId(config),
+                    range,
+                });
+
+                return normalizeSheetEditorValues(data.values || []);
+            } catch (error) {
+                if (!ALLOW_BROWSER_SHEETS_OAUTH) {
+                    throw error;
+                }
+
+                const data = await getBrowserSheetsApiJson(`values/${encodeURIComponent(range)}?majorDimension=ROWS`, {}, getEditorSpreadsheetId(config));
+
+                return normalizeSheetEditorValues(data.values || []);
+            }
         };
 
         const updateSheetEditorValues = async (config, values) => {
             const paddedValues = createPaddedSheetValues(values);
             const targetRange = `${quoteSheetName(config.sheetName)}!A1:${getColumnName(paddedValues[0].length)}${paddedValues.length}`;
 
-            await getSheetsApiJson(`values/${encodeURIComponent(targetRange)}?valueInputOption=USER_ENTERED`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    majorDimension: 'ROWS',
-                    values: paddedValues,
-                }),
-            }, getEditorSpreadsheetId(config));
+            try {
+                await getSidotiSheetsApiJson('/values', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        spreadsheetId: getEditorSpreadsheetId(config),
+                        range: targetRange,
+                        valueInputOption: 'USER_ENTERED',
+                        majorDimension: 'ROWS',
+                        values: paddedValues,
+                    }),
+                });
+            } catch (error) {
+                if (!ALLOW_BROWSER_SHEETS_OAUTH) {
+                    throw error;
+                }
+
+                await getBrowserSheetsApiJson(`values/${encodeURIComponent(targetRange)}?valueInputOption=USER_ENTERED`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        majorDimension: 'ROWS',
+                        values: paddedValues,
+                    }),
+                }, getEditorSpreadsheetId(config));
+            }
         };
 
         const openSheetEditor = async (editorKey) => {
