@@ -5140,10 +5140,52 @@
     });
 
     document.addEventListener('click', (e) => {
+        } catch (err) {
+            renderState(err.message || 'Dokumen gagal dimuat.', 'error');
+        }
+    };
+
+    let debounceTimer = null;
+    const scheduleSearch = () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => runSearch(searchInput.value.trim()), 350);
+    };
+
+    searchInput.addEventListener('input', scheduleSearch);
+    searchInput.addEventListener('focus', () => {
+        if (!searchResults.innerHTML.trim()) runSearch(searchInput.value.trim());
+        else setOpen(true);
+    });
+    searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') { setOpen(false); searchInput.blur(); }
+    });
+
+    searchResults.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-search-action]');
+        if (!btn) return;
+        const card = btn.closest('.document-search-card');
+        const url  = btn.dataset.searchAction === 'download'
+            ? card?.dataset.downloadUrl
+            : card?.dataset.previewUrl;
+        openDocumentUrl(url || '');
+    });
+
+    viewAllBtns.forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault(); e.stopPropagation();
+            searchInput.value = '';
+            searchRoot.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            runSearch('');
+            searchInput.focus({ preventScroll: true });
+        });
+    });
+
+    document.addEventListener('click', (e) => {
         if (!searchRoot.contains(e.target)) setOpen(false);
     });
 })();
 
 </script>
+<script src="./app.js?v=20260517-loginfix"></script>
 </body>
 </html>
