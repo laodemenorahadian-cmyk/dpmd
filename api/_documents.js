@@ -218,7 +218,18 @@ const sendJson = (response, statusCode, payload) => {
     response.statusCode = statusCode;
     response.setHeader('Content-Type', 'application/json; charset=utf-8');
     response.setHeader('Cache-Control', 'no-store');
+    response.setHeader('Access-Control-Allow-Origin', '*');
+    response.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    response.setHeader('Access-Control-Allow-Headers', 'Accept, Content-Type');
     response.end(JSON.stringify(payload));
+};
+
+const sendOptions = (response) => {
+    response.statusCode = 204;
+    response.setHeader('Access-Control-Allow-Origin', '*');
+    response.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    response.setHeader('Access-Control-Allow-Headers', 'Accept, Content-Type');
+    response.end();
 };
 
 const getRequestQuery = (request) => {
@@ -255,4 +266,5 @@ module.exports = {
     getRequestQuery,
     sendDocuments,
     sendJson,
+    sendOptions,
 };

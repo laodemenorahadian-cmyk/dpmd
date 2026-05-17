@@ -5037,7 +5037,49 @@
     // ── Apps Script Web App URL (opsional) ────────────────────────
     // Jika kamu deploy Apps Script sebagai Web App untuk membaca Drive,
     // isi URL-nya di sini. Biarkan kosong jika belum ada.
-    const DRIVE_SEARCH_API_URL = window.SIDOTI_DRIVE_SEARCH_URL || '/api/documents/search';
+    const DEFAULT_DRIVE_SEARCH_API_URL = '/api/documents/search';
+    const PRODUCTION_DRIVE_SEARCH_API_URL = 'https://dpmdsidot.vercel.app/api/documents/search';
+    const DRIVE_SEARCH_API_URL = window.SIDOTI_DRIVE_SEARCH_URL || DEFAULT_DRIVE_SEARCH_API_URL;
+
+    const buildSearchUrl = (baseUrl, query) => {
+        const url = new URL(baseUrl, window.location.origin);
+        if (query) url.searchParams.set('q', query);
+        url.searchParams.set('limit', '50');
+        url.searchParams.set('_', String(Date.now()));
+        return url.toString();
+    };
+
+    const getSearchApiCandidates = () => {
+        const candidates = [
+            DRIVE_SEARCH_API_URL,
+            DEFAULT_DRIVE_SEARCH_API_URL,
+            PRODUCTION_DRIVE_SEARCH_API_URL,
+        ];
+
+        return [...new Set(candidates.filter(Boolean).map((url) => (
+            new URL(url, window.location.origin).toString()
+        )))];
+    };
+
+    const fetchSearchJson = async (url) => {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 20000);
+
+        try {
+            const resp = await fetch(url, {
+                method: 'GET',
+                headers: { Accept: 'application/json' },
+                cache: 'no-store',
+                credentials: 'omit',
+                signal: controller.signal,
+            });
+            const data = await resp.json().catch(() => ({}));
+            if (!resp.ok) throw new Error(data.message || 'Gagal memuat dokumen.');
+            return data;
+        } finally {
+            clearTimeout(timeout);
+        }
+    };
 
     const openDocumentUrl = (url) => {
         if (!url) { window.alert('File belum tersedia.'); return; }
@@ -5089,17 +5131,23 @@
 
         renderState('Memuat dokumen...', 'loading');
 
-        try {
-            const url = query
-                ? `${DRIVE_SEARCH_API_URL}?q=${encodeURIComponent(query)}`
-                : DRIVE_SEARCH_API_URL;
-            const resp = await fetch(url, { credentials: 'same-origin' });
-            const data = await resp.json().catch(() => ({}));
-            if (!resp.ok) throw new Error(data.message || 'Gagal memuat dokumen.');
-            renderDocuments(Array.isArray(data.data) ? data.data : Array.isArray(data) ? data : []);
-        } catch (err) {
-            renderState(err.message || 'Dokumen gagal dimuat.', 'error');
+        let lastError = null;
+
+        for (const baseUrl of getSearchApiCandidates()) {
+            try {
+                const data = await fetchSearchJson(buildSearchUrl(baseUrl, query));
+                renderDocuments(Array.isArray(data.data) ? data.data : Array.isArray(data) ? data : []);
+                return;
+            } catch (err) {
+                lastError = err;
+            }
         }
+
+        const isTimeout = lastError?.name === 'AbortError';
+        const message = isTimeout
+            ? 'Koneksi pencarian timeout. Muat ulang halaman lalu coba lagi.'
+            : lastError?.message || 'Dokumen gagal dimuat.';
+        renderState(message, 'error');
     };
 
     let debounceTimer = null;
