@@ -2705,12 +2705,28 @@
             ));
         };
 
+        window.getSidotiAppOrigin = window.getSidotiAppOrigin || (() => {
+            const productionOrigin = 'https://dpmdsidot.vercel.app';
+            const origin = window.location?.origin;
+
+            if (origin && origin !== 'null') {
+                return origin;
+            }
+
+            try {
+                const hrefOrigin = new URL(window.location?.href || productionOrigin).origin;
+                return hrefOrigin && hrefOrigin !== 'null' ? hrefOrigin : productionOrigin;
+            } catch {
+                return productionOrigin;
+            }
+        });
+
         const SIDOTI_SHEETS_API_BASE_URL = window.SIDOTI_SHEETS_API_BASE_URL || '/api/sheets';
         const ALLOW_BROWSER_SHEETS_OAUTH = window.SIDOTI_ALLOW_BROWSER_OAUTH === true;
 
         const getSidotiSheetsApiUrl = (path, params = {}) => {
             const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-            const url = new URL(`${SIDOTI_SHEETS_API_BASE_URL}${normalizedPath}`, window.location.origin);
+            const url = new URL(`${SIDOTI_SHEETS_API_BASE_URL}${normalizedPath}`, window.getSidotiAppOrigin());
 
             Object.entries(params).forEach(([key, value]) => {
                 if (value !== undefined && value !== null && value !== '') {
@@ -5137,9 +5153,14 @@
     const DEFAULT_DRIVE_SEARCH_API_URL = '/api/documents/search';
     const PRODUCTION_DRIVE_SEARCH_API_URL = 'https://dpmdsidot.vercel.app/api/documents/search';
     const DRIVE_SEARCH_API_URL = window.SIDOTI_DRIVE_SEARCH_URL || DEFAULT_DRIVE_SEARCH_API_URL;
+    const getDocumentSearchOrigin = () => (
+        typeof window.getSidotiAppOrigin === 'function'
+            ? window.getSidotiAppOrigin()
+            : 'https://dpmdsidot.vercel.app'
+    );
 
     const buildSearchUrl = (baseUrl, query) => {
-        const url = new URL(baseUrl, window.location.origin);
+        const url = new URL(baseUrl, getDocumentSearchOrigin());
         if (query) url.searchParams.set('q', query);
         url.searchParams.set('limit', '50');
         url.searchParams.set('_', String(Date.now()));
@@ -5154,7 +5175,7 @@
         ];
 
         return [...new Set(candidates.filter(Boolean).map((url) => (
-            new URL(url, window.location.origin).toString()
+            new URL(url, getDocumentSearchOrigin()).toString()
         )))];
     };
 
